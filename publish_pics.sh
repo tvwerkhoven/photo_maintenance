@@ -117,5 +117,6 @@ for img in $(${PROG_EXIFTOOL} -m -q -q -if '$rating' -p '$filename' ${SOURCE_DIR
 	fi
 done
 
+# Unset for bash, see above
 #shopt -u nocaseglob # Unsets nocaseglob
 #shopt -u nullglob # Unsets nullglob
