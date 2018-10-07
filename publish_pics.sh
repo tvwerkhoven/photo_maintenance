@@ -120,7 +120,7 @@ for img in $(${PROG_EXIFTOOL} -m -q -q -if '$rating' -p '$filename' ${SOURCE_DIR
 			#ISEOS=$(echo ${SOURCE_DIR}/${img} | grep "MVI_.*MOV")
 			#ISGOPRO=$(echo ${SOURCE_DIR}/${img} | grep "GOPR.*MP4")
 			#echo cp ${SOURCE_DIR}/$img ${EXPORT_DIR}/${img}
-			nice -n 15 ffmpeg -i ${SOURCE_DIR}/$img -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slow -metadata date="$(${PROG_STAT} --format="%y" $img | ${PROG_CUT} -f 1-2 -d' ')" -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${EXPORT_DIR}/${img}-x264_aac.mp4"
+			nice -n 15 ffmpeg -i ${SOURCE_DIR}/$img -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slow -metadata date="$(${PROG_STAT} --format="%y" ${SOURCE_DIR}/${img} | ${PROG_CUT} -f 1-2 -d' ')" -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${EXPORT_DIR}/${img}-x264_aac.mp4"
 			${PROG_TOUCH} -r "${SOURCE_DIR}/$img" "${EXPORT_DIR}/${img}-x264_aac.mp4"
 			${PROG_SETFILE} -d "$(${PROG_GETFILEINFO} -d ${SOURCE_DIR}/${img})" "${EXPORT_DIR}/${img}-x264_aac.mp4"
 			#${PROG_SETFILE} -m "$(${PROG_GETFILEINFO} ${SOURCE_DIR}/${img} | grep modified | ${PROG_CUT} -c11-)" "${EXPORT_DIR}/${img}-x264_aac.mp4"
