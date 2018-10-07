@@ -12,11 +12,24 @@ To publish pictures in lower resolution to the web or phone, this script scans a
 
 # One-liners
 
-## Find geotags
+## Find non-geotags
 Recursively find JPEG-files that have no geotag:
 
     find . -iregex ".*\.\(jp.*g\)" -exec sh -c 'f="{}"; test -z $(jhead "$f" | grep GPS | head -n 1 | cut -f1 -d" ") && echo $f' \;
 
+## Copy gps from one file
+
+Given an image with a GPS / geotag, copy it to other files
+
+    exiftool −overwrite_original_in_place -tagsFromFile SOURCE.JPG -gps:all IMGX*JPG
+
+Using these tags:
+
+    −overwrite_original_in_place ensure all other file parameters are kept identical
+    -tagsFromFile               indicate which source file to use
+    -gps:all                    indicate which tags to copy
+
+From: https://superuser.com/questions/377431/transfer-exif-gps-info-from-one-image-to-another#377434
 
 ## Archive
 Manually archive pictures to (external) backup:
