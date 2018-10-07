@@ -86,7 +86,7 @@ if [[ ${HAVE_TOOLS} -eq 0 ]]; then echo "Not all tools available, aborting"; exi
 EXPORT_DIR=${EXPORT_ROOT}/$(basename ${SOURCE_DIR} | tr "_" " ")
 mkdir -p "${EXPORT_DIR}"
 # Source_dir should be like 20180903_holiday_italy_venice_verona
-albumname=$(basename ${SOURCE_DIR} | cut -f2- -d_))
+albumname=$(basename ${SOURCE_DIR} | cut -f2- -d_)
 
 # for globbing https://stackoverflow.com/a/41139446
 # TODO does not work in zsh?
