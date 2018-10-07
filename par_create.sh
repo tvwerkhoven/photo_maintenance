@@ -50,7 +50,7 @@ fi
 
 PROG_PAR2=/usr/local/bin/par2
 PROG_CAFFEINATE=/usr/bin/caffeinate
-CHECK_DIR=$(cd $1; pwd)
+CHECK_DIR=$(cd $1 && pwd)
 
 # Check if tools exist
 HAVE_TOOLS=1
