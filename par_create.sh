@@ -72,7 +72,7 @@ CHECK_DIR_BASE=$(basename $(pwd))
 PAR_FILE=${CHECK_DIR_BASE}0000.par2
 PAR_LOG_FILE=${CHECK_DIR_BASE}0000.par2.log
 
-if [[ -c ${PAR_FILE} ]]; then echo "par2 already exists, aborting"; cd ${CURDIR}; exit; fi
+if [[ -f ${PAR_FILE} ]]; then echo "par2 already exists, aborting"; cd ${CURDIR}; exit; fi
 
 # Count number of files so we know how many blocks to use. Use tr to trim 
 # whitespace (https://stackoverflow.com/questions/369758/how-to-trim-whitespace-from-a-bash-variable)
