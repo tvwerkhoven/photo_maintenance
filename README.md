@@ -31,6 +31,15 @@ Using these tags:
 
 From: https://superuser.com/questions/377431/transfer-exif-gps-info-from-one-image-to-another#377434
 
+## Add suffix to filenames
+
+For example to distinguish different photographers
+
+    for file in DSC*JPG
+      do mv "$file" "${file%\.*}-reinier.${file##*\.}"
+    done
+
+
 ## Archive
 Manually archive pictures to (external) backup:
 
@@ -48,3 +57,24 @@ Using these tags:
     -u, --update                skip files that are newer on the receiver
     -r, --recursive             recurse into directories
 
+# Convert picasa rating to iptc
+
+## Find picasa starred files
+
+for dir in $(find . -type d); do
+    test ! -f ${dir}/.picasa.ini && continue
+    cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" | grep "^\[" | tr -d "[]"
+done
+
+## Convert picasa star to iptc rating=5
+
+for dir in $(find . -type d); do
+    test ! -f ${dir}/.picasa.ini && continue
+    cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" |  grep "^\[" | tr -d "[]" | while read starimg; do 
+        echo "${dir}/${starimg}"
+        exiftool-5.26 -rating=5 -q -q -m "${dir}/${starimg}"
+        jhead -ft "${dir}/${starimg}"
+    done
+done
+
+WARNING - need to apply jhead -ft after exiftooling, or date is disturbed. Re-run 2018 and 2017
