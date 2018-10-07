@@ -50,7 +50,11 @@ fi
 
 PROG_PAR2=/usr/local/bin/par2
 PROG_CAFFEINATE=/usr/bin/caffeinate
+# Convert relative path to absolute, if $1 does not exist, cd fails and 
+# CHECK_DIR is empty
 CHECK_DIR=$(cd $1 && pwd)
+# Check if directory exists
+if [[ ! -d ${CHECK_DIR} ]]; then echo "dir to check \"${CHECK_DIR}\" does not exist, aborting"; exit; fi
 
 # Check if tools exist
 HAVE_TOOLS=1
@@ -58,9 +62,6 @@ if [[ ! -x ${PROG_PAR2} ]]; then echo "par2 not found"; HAVE_TOOLS=0; fi
 if [[ ! -x ${PROG_CAFFEINATE} ]]; then echo "caffeinate not found"; HAVE_TOOLS=0; fi
 
 if [[ ${HAVE_TOOLS} -eq 0 ]]; then echo "Not all tools available, aborting"; exit; fi
-
-# Check if directory exists
-if [[ ! -d ${CHECK_DIR} ]]; then echo "dir to check \"${CHECK_DIR}\" does not exist, aborting"; exit; fi
 
 # Store current working dir, then cd to par dir such that ourput par2 files will be in correct directory
 CURDIR=$(pwd)
