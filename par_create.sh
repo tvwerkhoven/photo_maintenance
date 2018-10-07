@@ -79,6 +79,7 @@ if [[ -f ${PAR_FILE} ]]; then echo "par2 already exists, aborting"; cd ${CURDIR}
 NUM_FILES=$(find . | wc -l | tr -d '[:space:]')
 
 # Once in the right dir, start par2 through nice and caffeinate to not disturb stuff and stay awake
+echo "par_create.sh $(date)" | tee -a ${PAR_LOG_FILE}
 nice -n 10 ${PROG_CAFFEINATE} -ms ${PROG_PAR2} c -b${NUM_FILES} -c100 -R ${PAR_FILE} ./* | tee -a ${PAR_LOG_FILE}
 
 # # Caffeinate 

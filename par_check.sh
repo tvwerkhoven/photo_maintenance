@@ -35,6 +35,7 @@ PAR_LOG_FILE=${CHECK_DIR_BASE}0000.par2.log
 if [[ ! -f ${PAR_FILE} ]]; then echo "par2 file does not exist, aborting"; cd ${CURDIR}; exit; fi
 
 # Once in the right dir, start par2 through nice and caffeinate to not disturb stuff and stay awake
+echo "par_check.sh $(date)" | tee -a ${PAR_LOG_FILE}
 nice -n 10 ${PROG_CAFFEINATE} -ms ${PROG_PAR2} v ${PAR_FILE} | tee -a ${PAR_LOG_FILE}
 
 
