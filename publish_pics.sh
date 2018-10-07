@@ -27,8 +27,19 @@
 # - https://trac.ffmpeg.org/wiki/Encode/AAC#fdk_vbr
 # - https://trac.ffmpeg.org/wiki/Encode/H.264#a1.ChooseaCRFvalue
 
-SOURCE_DIR=$1
-EXPORT_ROOT=$2
+if [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $# -lt 1 ]]; then
+	echo "Usage: $(basename $0) <export_dir> [source_dir=.] "
+	exit
+fi
+
+EXPORT_ROOT=$1
+if [[ $# -gt 1 ]]; then
+	SOURCE_DIR=$(cd $2; pwd)
+else
+	SOURCE_DIR=$(pwd)
+fi
+echo ${SOURCE_DIR}
+
 DRY=0
 
 PROG_EXIFTOOL=/opt/local/bin/exiftool
@@ -43,8 +54,10 @@ PROG_NICE=/usr/bin/nice
 PROG_CUT=/usr/bin/cut
 PROG_DATE=/opt/local/bin/gdate
 
-# Check if export dir exists
+# Check if source an export dir exists
 if [[ ! -d ${EXPORT_ROOT} ]]; then echo "export dir \"${EXPORT_ROOT}\" does not exist, aborting"; exit; fi
+if [[ ! -d ${SOURCE_DIR} ]]; then echo "source dir \"${SOURCE_DIR}\" does not exist, aborting"; exit; fi
+
 
 # Check if tools exist
 HAVE_TOOLS=1
