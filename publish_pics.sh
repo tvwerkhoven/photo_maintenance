@@ -101,10 +101,10 @@ setopt extendedglob # for zsh - https://stackoverflow.com/a/157425
 # *.{JPG,PNG,MOV,MP4}) for bash
 # https://stackoverflow.com/a/41139446
 for img in $(${PROG_EXIFTOOL} -m -q -q -if '$rating' -p '$filename' ${SOURCE_DIR}/(#i)(*{png,mov,mp4,jpg})*(N)); do
-	# Split processing between images and video
-	ISIMAGE=$(${PROG_FILE} -I ${SOURCE_DIR}/${img} | grep image)
-	ISVIDEO=$(${PROG_FILE} -I ${SOURCE_DIR}/${img} | grep video)
-	echo "${img} - exporting $ISIMAGE - $ISVIDEO"
+	# Use mime-type to distinguish between video and images
+	ISIMAGE=$(${PROG_FILE} --mime-type ${SOURCE_DIR}/${img} | grep image | cut -d':' -f2)
+	ISVIDEO=$(${PROG_FILE} --mime-type ${SOURCE_DIR}/${img} | grep video | cut -d':' -f2)
+	echo "${img} - exporting ${ISIMAGE}${ISVIDEO}"
 	if [[ ${DRY} -eq 0 ]]; then
 		# Might use this later for renaming
 		filedate=$(${PROG_DATE} -d "$(${PROG_GETFILEINFO} -d ${SOURCE_DIR}/${img})" +%Y%m%d%H%M%S)
@@ -115,15 +115,24 @@ for img in $(${PROG_EXIFTOOL} -m -q -q -if '$rating' -p '$filename' ${SOURCE_DIR
 			${PROG_SETFILE} -d "$(${PROG_GETFILEINFO} -d ${SOURCE_DIR}/${img})" "${EXPORT_DIR}/${img}"
 			#${PROG_SETFILE} -m "$(${PROG_GETFILEINFO} ${SOURCE_DIR}/${img} | grep modified | ${PROG_CUT} -c11-)" "${EXPORT_DIR}/${img}"
 		elif [[ -n $ISVIDEO ]]; then
-			# For future features
-			#ISIPHONE=$(echo ${SOURCE_DIR}/${img} | grep "IMG_.*MOV")
-			#ISEOS=$(echo ${SOURCE_DIR}/${img} | grep "MVI_.*MOV")
-			#ISGOPRO=$(echo ${SOURCE_DIR}/${img} | grep "GOPR.*MP4")
-			#echo cp ${SOURCE_DIR}/$img ${EXPORT_DIR}/${img}
-			nice -n 15 ffmpeg -i ${SOURCE_DIR}/$img -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slow -metadata date="$(${PROG_STAT} --format="%y" ${SOURCE_DIR}/${img} | ${PROG_CUT} -f 1-2 -d' ')" -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${EXPORT_DIR}/${img}-x264_aac.mp4"
-			${PROG_TOUCH} -r "${SOURCE_DIR}/$img" "${EXPORT_DIR}/${img}-x264_aac.mp4"
-			${PROG_SETFILE} -d "$(${PROG_GETFILEINFO} -d ${SOURCE_DIR}/${img})" "${EXPORT_DIR}/${img}-x264_aac.mp4"
-			#${PROG_SETFILE} -m "$(${PROG_GETFILEINFO} ${SOURCE_DIR}/${img} | grep modified | ${PROG_CUT} -c11-)" "${EXPORT_DIR}/${img}-x264_aac.mp4"
+			# From ffmpeg info, look for three-digit fps (xxx.xx fps), which 
+			# means it's slomo. We could make this more exact by checking for 
+			# fps > 30, but that's too complicated
+			ISSLOMO=$(ffmpeg -i ${SOURCE_DIR}/${img} 2>&1 | grep "[0-9]\{3,\}.[0-9]\{2,\} fps,")
+			if  [[ -n $ISSLOMO ]]; then
+				echo -n "Cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
+				read answer
+			else
+				# For future features
+				#ISIPHONE=$(echo ${SOURCE_DIR}/${img} | grep "IMG_.*MOV")
+				#ISEOS=$(echo ${SOURCE_DIR}/${img} | grep "MVI_.*MOV")
+				#ISGOPRO=$(echo ${SOURCE_DIR}/${img} | grep "GOPR.*MP4")
+				#echo cp ${SOURCE_DIR}/$img ${EXPORT_DIR}/${img}
+				nice -n 15 ${PROG_FFMPEG} -hide_banner -nostats -loglevel panic -i ${SOURCE_DIR}/$img -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slow -metadata date="$(${PROG_STAT} --format="%y" ${SOURCE_DIR}/${img} | ${PROG_CUT} -f 1-2 -d' ')" -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${EXPORT_DIR}/${img}-x264_aac.mp4"
+				${PROG_TOUCH} -r "${SOURCE_DIR}/$img" "${EXPORT_DIR}/${img}-x264_aac.mp4"
+				${PROG_SETFILE} -d "$(${PROG_GETFILEINFO} -d ${SOURCE_DIR}/${img})" "${EXPORT_DIR}/${img}-x264_aac.mp4"
+				#${PROG_SETFILE} -m "$(${PROG_GETFILEINFO} ${SOURCE_DIR}/${img} | grep modified | ${PROG_CUT} -c11-)" "${EXPORT_DIR}/${img}-x264_aac.mp4"
+			fi
 		else
 			echo "WARNING - unrecognized filetype"
 		fi
