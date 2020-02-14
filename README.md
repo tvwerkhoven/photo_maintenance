@@ -10,6 +10,83 @@ To prevent bitrot when the filesystem does not take care of this (e.g. on macOS)
 
 To publish pictures in lower resolution to the web or phone, this script scans a source directory for pictures with 5 star rating rating in the IPTC header and exports these pictures in lower resolution to a separate directory. I use this to store more pictures on my iPhone, for example.
 
+# Metadata in videos (geotag & keywords)
+
+Need to preserve geotag and keywords in videos for iOS
+
+## Geotag
+
+Same question, no answer:
+
+    https://superuser.com/questions/1323368/exiftools-tagsfromfile-does-not-help-recover-all-metadata-iphone
+
+Not possible with exiftool:
+
+    http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,5977.0.html
+    http://u88.n24.queensu.ca/exiftool/forum/index.php?topic=5631.0
+
+ffmpeg geotag is not recognized by iOS:
+
+    https://trac.ffmpeg.org/ticket/4209
+
+Workaround using mp4extract:
+
+    ffmpeg -i source.mov converted.mp4
+    mp4extract moov/meta source.mov source-metadata
+    mp4edit --insert moov:source-metadata converted.mp4 converted-withmeta.mp4
+
+Source: https://trac.ffmpeg.org/ticket/6193
+
+## Geotag new videos
+
+TODO:
+1. Take existing moov/meta with geotag from iPhone video using mp4extract
+2. Get geotag from surrounding (by timestamp) images via exiftool -g
+2. Update GPS/datetime data in atom file
+3. Re-apply to new video file
+
+## Video keywords
+
+Not working:
+- Via Photos, then AirDrop
+- Via Photos, then export as original
+- Via Photos, then export
+- Via Photos, then sync with iPhone
+- Via Bridge, then Rollit
+- Via Exiftool, with IPTC:Keywords, then Rollit
+- Via Exiftool, with quicktime:keywords, then Rollit
+
+TODO: no idea
+
+## PNG timestamps
+
+TODO: keep original metadata (e.g. oplichter marktplaats)
+
+## Picture keywords
+
+Use directory name to add IPTC keywords to picture files
+
+    gfind . -maxdepth 1 -type d | tail -n +2  | while read outdir; do
+        # Split dirname in keywords, build exiftool command like:
+        # exiftool -IPTC:Keywords="20190930 vakantie vianden luxemburg" -IPTC:Keywords=vakantie -IPTC:Keywords=vianden -IPTC:Keywords=luxemburg
+        # Keywords always lowercase to reduce # of unique ones
+        outdir=$(basename ${outdir} | tr '[:upper:]' '[:lower:]')
+        # Start with full dirname as keyword (to search full string), use as array
+        exiftags=()
+        exiftags+="-IPTC:Keywords+=${outdir}"
+        # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
+        outdirkeywords=${outdir#* }
+        # use ${=outdirkeywords} for zsh, see https://scriptingosx.com/2019/08/moving-to-zsh-part-8-scripting-zsh/
+        for thiskeyword in ${=outdirkeywords}; do 
+            if [ $(echo $thiskeyword | wc -c) -gt 3 ]; then
+                exiftags+="-IPTC:Keywords+=${thiskeyword}"
+            fi
+        done
+        # Add keywords, update timestamp, do not store backups (i.e. _original)
+        exiftool -overwrite_original ${exiftags} $imgfile "$outdir"
+        jhead -ft ${outdir}/*
+    done
+
 # One-liners
 
 ## Find non-geotags
