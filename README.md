@@ -94,6 +94,34 @@ Recursively find JPEG-files that have no geotag:
 
     find . -iregex ".*\.\(jp.*g\)" -exec sh -c 'f="{}"; test -z $(jhead "$f" | grep GPS | head -n 1 | cut -f1 -d" ") && echo $f' \;
 
+## Geotag files from other photos
+
+I have a non-GPS camera to take proper pictures in addition to my smartphone camera. One drawback is that this camera does not geotag my pictures. A solution to this is using the smartphone pictures as reference. exiftool can be used to automate this.
+
+Method:
+
+1. Ideally: when taking non-geotaggedpictures, also take a few geotagged pictures to serve as waypoints
+2. Create GPX file from geotagged pictures
+3. Use GPX file to tag non-geotagged pictures, interpolating where necessary
+
+N.B.
+
+- Personal note: when using (Guru Maps) GPS tracks, do not use manually waypoints - time might be off (delete manually from GPX)
+- EXIF does not store timezone, therefore set computer clock to country where pictures were taken OR apply `-geosync` offset as (computer time zone) - (picture timezone), i.e. GMT+1 - GMT+2 = `-geosync=-1:00:00`
+- If there was no movement in between geotracks (i.e. at home/hotel), use longer `GeoMaxIntSecs` to allow broader interpolation.
+
+Generate GPX:
+
+    exiftool -if '$gpsdatetime' -fileOrder gpsdatetime -p /Users/tim/Pictures/maintenance/gpx.fmt -d %Y-%m-%dT%H:%M:%SZ *JPG > output.gpx
+
+Apply GPX, only where none applied yet, repair timestamp after update:
+
+    exiftool -if 'not $gpsdatetime' -api GeoMaxIntSecs=18000 -geotag output.gpx *JPG
+    jhead -ft *JPG
+
+
+Source: https://www.sno.phy.queensu.ca/~phil/exiftool/geotag.html#Inverse
+
 ## Copy gps from one file
 
 Given an image with a GPS / geotag, copy it to other files
