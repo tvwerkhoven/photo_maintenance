@@ -225,20 +225,20 @@ Using these tags:
 
 ## Find picasa starred files
 
-for dir in $(find . -type d); do
-    test ! -f ${dir}/.picasa.ini && continue
-    cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" | grep "^\[" | tr -d "[]"
-done
+    for dir in $(find . -type d); do
+        test ! -f ${dir}/.picasa.ini && continue
+        cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" | grep "^\[" | tr -d "[]"
+    done
 
 ## Convert picasa star to iptc rating=5
 
-for dir in $(find . -type d); do
-    test ! -f ${dir}/.picasa.ini && continue
-    cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" |  grep "^\[" | tr -d "[]" | while read starimg; do 
-        echo "${dir}/${starimg}"
-        exiftool-5.26 -rating=5 -q -q -m "${dir}/${starimg}"
-        jhead -ft "${dir}/${starimg}"
+    for dir in $(find . -type d); do
+        test ! -f ${dir}/.picasa.ini && continue
+        cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" |  grep "^\[" | tr -d "[]" | while read starimg; do 
+            echo "${dir}/${starimg}"
+            exiftool-5.26 -rating=5 -q -q -m "${dir}/${starimg}"
+            jhead -ft "${dir}/${starimg}"
+        done
     done
-done
 
 WARNING - need to apply jhead -ft after exiftooling, or date is disturbed. Re-run 2018 and 2017
