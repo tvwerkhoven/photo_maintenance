@@ -136,6 +136,56 @@ Using these tags:
 
 From: https://superuser.com/questions/377431/transfer-exif-gps-info-from-one-image-to-another#377434
 
+## Number files based on date
+
+    counter=0;
+    for f in $(ls -tr *); do
+      counter=$(($counter+1))
+      numf=$(printf "%03d-$f\n" $counter)
+      mv $f $numf
+    done
+
+## Check date integrity
+
+    # WARNING! Check which timezone these pictures were taken!
+    
+    CHKFILE=IMG_3402.MOV
+
+    for CHKFILE in *MOV; do
+        DATE1=$(gstat --format="%y" $CHKFILE);
+        DATE2=$(ffmpeg -i $CHKFILE 2>&1 | grep creation_time | head -n 1 | awk '{print $3}');
+        NORMDATE1=$(gdate --date="${DATE1}" +%s);
+        NORMDATE2=$(gdate --date="${DATE2}" +%s);
+        DATEDELTA=$(($NORMDATE1 - $NORMDATE2));
+        # https://stackoverflow.com/questions/29223313/absolute-value-of-a-number
+        DATEDELTAABS=${DATEDELTA#-};
+        #if [[ $DATEDELTAABS -gt 60 ]]; then;
+        echo "$CHKFILE - dates differ by: $DATEDELTAABS";
+        #fi;
+        echo $DATE1 $DATE2
+    done;
+
+
+## Touch movies based on creation date
+
+Works for iPhone movies, not well tested
+
+    for mov in *MOV; 
+      do echo $mov;
+      NEWDATE=$(ffmpeg -i $mov 2>&1 | grep creation_time | head -n 1 | awk '{print $3}');
+      echo $NEWDATE;
+      gtouch --date $NEWDATE $mov;
+    done
+
+    INFILE=IMG_9595.MOV; INFILEDATE=$(ffmpeg -i $INFILE 2>&1 | grep creation_time | head -n 1 | cut -f 2- -d:); gtouch --date $(echo $INFILEDATE) $INFILE
+
+    for INFILE in $arr;
+      do INFILEDATE=$(ffmpeg -i $INFILE 2>&1 | grep creation_time | head -n 1 | cut -f 2- -d:);
+      gtouch --date $(echo $INFILEDATE) $INFILE;
+    done
+
+arr=(IMG_9474.MOV IMG_9478.MOV IMG_9497.MOV IMG_9570.MOV IMG_9571.MOV IMG_9572.MOV IMG_9573.MOV IMG_9577.MOV)
+
 ## Add suffix to filenames
 
 For example to distinguish different photographers
