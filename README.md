@@ -2,6 +2,15 @@
 
 This is a collection of scripts to maintain and publish photo archives.
 
+## Todo
+
+- Set keywords for videos: no idea how
+- Set GPS for non-iPhone videos: need to implement
+- Set timestamps in PNG files properly: need to implement
+- Figoure out HDR creation on Mac
+- Document and detail out current workflow
+- Clean up publish_pics.sh script
+
 # Archive integrity
 
 To prevent bitrot when the filesystem does not take care of this (e.g. on macOS), one can use `par2` to manually create and check integrity.
