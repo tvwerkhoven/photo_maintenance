@@ -240,7 +240,6 @@ _picasa2iptc() {
           printf "Warning: AVI not supported: %s\\n" "${_dir}/${_inifile}"
         else
           _starfiles+=("${_dir}/${_inifile}")
-          _debug printf ">> Found star for ${_inifile}\\n"
         fi
       fi
     done < <(cat "${_dir}/${_OPTION_PICASA_FILE}" | tr -d "\r")
