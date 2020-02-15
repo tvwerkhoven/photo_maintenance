@@ -125,10 +125,12 @@ picsa2iptc -- convert Picasa picture rating to IPTC keywords
 Usage:
   ${_ME} [--picasa-file <picasafile>] [<target dir>]
   ${_ME} -h | --help
+  ${_ME} --dry-run
 
 Options:
   -h --help  Display this help information.
   --picasa-file Specify which picasa file to look for, default .picasa.ini
+  --dry-run  Only print number of starred files found per directory
 HEREDOC
 }
 
@@ -137,6 +139,7 @@ HEREDOC
 # Initialize program option variables.
 _PRINT_HELP=0
 _USE_DEBUG=0
+_DRY_RUN=0
 
 # Initialize additional expected option variables.
 _OPTION_TARGETDIR="."
@@ -175,6 +178,9 @@ do
     --debug)
       _USE_DEBUG=1
       ;;
+    --dry-run)
+      _DRY_RUN=1
+      ;;
     --picasa-file)
       _require_argument "${__option}" "${__maybe_param}"
       _OPTION_PICASA_FILE="${__maybe_param}"
@@ -203,12 +209,46 @@ _picasa2iptc() {
 
   # Loop over all directories recursively, find picasa files
   local _dir
-  find "${_OPTION_TARGETDIR}" -type d | while read _dir; do
+  while read -r _dir; do
     test ! -f "${_dir}/${_OPTION_PICASA_FILE}" && continue
+    _debug printf ">> parsing ${_dir}...\\n"
+
     # .picasa.ini is formatted as follows
-    cat "${_dir}/${_OPTION_PICASA_FILE}" | tr -d "\r" | grep "^star=yes\|^\["  | pcregrep -M "\]\nstar" || true | grep "^\[" || true | tr -d "[]"
-    break
-  done
+    # [IMG_2494.JPG]
+    # prop=X
+    # star=yes
+
+    # Loop over lines, get rid of \r, if we find a file, formatted as 
+    # [<filename>], store it, then look for star=yes. Based on https://github.com/rudimeier/bash_ini_parser
+    local _secpat="^\[[^\]*\]$"
+    local _iniline
+    local _inifile
+    local -a _starfiles=()
+    while read -r _iniline; do
+      # Section marker? Should be [, anything by ], then ].
+      if [[ "${_iniline}" =~ $_secpat ]]; then
+        _inifile="${_iniline#[}"
+        _inifile="${_inifile%%]}"
+      # Look for star=yes line. Every time we find this line, the most recent 
+      # file will be set to iptc rating=5
+      elif [[ "${_iniline}" =~ ^star=yes$ ]]; then
+        _starfiles+=("${_dir}/${_inifile}")
+        _debug printf ">> Found star for ${_inifile}\\n"
+      fi
+    done < <(cat "${_dir}/${_OPTION_PICASA_FILE}" | tr -d "\r")
+    _debug printf ">> Found star file list: ${_starfiles[*]:-}\\n"
+
+    # Given list of files, tag in IPTC
+    if ((_DRY_RUN))
+    then
+      printf "%s: %s\n" "${_dir}" "${#_starfiles[@]}"
+    else
+      if [[ "${#_starfiles[@]}" -gt 0 ]]; then
+        # -P to prevent changing the ModifyDate
+        exiftool -P -rating=5 "${_starfiles[@]:-}"
+      fi
+    fi
+  done < <(find "${_OPTION_TARGETDIR}" -type d)
   return
 }
 
