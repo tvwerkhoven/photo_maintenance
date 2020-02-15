@@ -232,8 +232,16 @@ _picasa2iptc() {
       # Look for star=yes line. Every time we find this line, the most recent 
       # file will be set to iptc rating=5
       elif [[ "${_iniline}" =~ ^star=yes$ ]]; then
-        _starfiles+=("${_dir}/${_inifile}")
-        _debug printf ">> Found star for ${_inifile}\\n"
+        # Check if file exists
+        if ! [[ -f "${_dir}/${_inifile}" ]]; then
+          printf "Warning: file not found: %s\\n" "${_dir}/${_inifile}"
+        # Check if file is supported by exiftool (not AVI, see https://www.exiftool.org/#supported)
+        elif [[ "${_inifile##*\.}" == "AVI" ]] || [[ "${_inifile##*\.}" == "avi" ]]; then
+          printf "Warning: AVI not supported: %s\\n" "${_dir}/${_inifile}"
+        else
+          _starfiles+=("${_dir}/${_inifile}")
+          _debug printf ">> Found star for ${_inifile}\\n"
+        fi
       fi
     done < <(cat "${_dir}/${_OPTION_PICASA_FILE}" | tr -d "\r")
     _debug printf ">> Found star file list: ${_starfiles[*]:-}\\n"
