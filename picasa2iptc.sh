@@ -245,7 +245,9 @@ _picasa2iptc() {
     else
       if [[ "${#_starfiles[@]}" -gt 0 ]]; then
         # -P to prevent changing the ModifyDate
-        exiftool -P -rating=5 "${_starfiles[@]:-}"
+        # -quiet to not give output
+        printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
+        exiftool -q -P -rating=5 "${_starfiles[@]:-}"
       fi
     fi
   done < <(find "${_OPTION_TARGETDIR}" -type d)
