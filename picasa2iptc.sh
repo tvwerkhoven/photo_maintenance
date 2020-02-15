@@ -120,7 +120,7 @@ die() {
 # Print the program help information.
 _print_help() {
   cat <<HEREDOC
-picsa2iptc -- convert Picasa picture rating to IPTC keywords
+picsa2iptc -- convert Picasa picture rating to IPTC/XMP rating=5 via exiftool
 
 Usage:
   ${_ME} [--picasa-file <picasafile>] [<target dir>]
@@ -225,7 +225,7 @@ _picasa2iptc() {
     local _inifile
     local -a _starfiles=()
     while read -r _iniline; do
-      # Section marker? Should be [, anything by ], then ].
+      # Section marker? Should be [, anything but ], then ].
       if [[ "${_iniline}" =~ $_secpat ]]; then
         _inifile="${_iniline#[}"
         _inifile="${_inifile%%]}"
@@ -241,7 +241,7 @@ _picasa2iptc() {
     # Given list of files, tag in IPTC
     if ((_DRY_RUN))
     then
-      printf "%s: %s\n" "${_dir}" "${#_starfiles[@]}"
+      printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
     else
       if [[ "${#_starfiles[@]}" -gt 0 ]]; then
         # -P to prevent changing the ModifyDate
