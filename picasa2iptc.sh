@@ -258,7 +258,7 @@ _picasa2iptc() {
         exiftool -q -P -rating=5 "${_starfiles[@]:-}"
       fi
     fi
-  done < <(find "${_OPTION_TARGETDIR}" -type d)
+  done < <(find "${_OPTION_TARGETDIR}" -type d | sort)
   return
 }
 
