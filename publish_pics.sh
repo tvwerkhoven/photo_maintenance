@@ -147,13 +147,14 @@ Publish selected pictures and videos for web-sharing (i.e. smaller), which
 can subsequently be copied to iPhone so one can store more pics on a phone
 
 Usage:
-  ${_ME} [--options] <export_dir>
+  ${_ME} [--options] <export_root>
   ${_ME} -h | --help --dry-run -s | --sourcedir
 
 Options:
   -h --help  Display this help information.
   --dry-run  Only check which files would be copied, do not convert/copy
-  -s --sourcedir  Directory to read from, defaults to current dir
+  -s --sourcedir Directory to read from, defaults to current dir
+  <export_root> Directory to create output directory and files in
 HEREDOC
 }
 
@@ -164,8 +165,22 @@ _PRINT_HELP=0
 _USE_DEBUG=0
 _DRY_RUN=0
 # Initialize additional expected option variables.
-_EXPORT_DIR=""
+_EXPORT_ROOT=""
 _SOURCE_DIR="."
+
+_PROG_EXIFTOOL=/opt/local/bin/exiftool
+_PROG_FILE=/usr/bin/file
+_PROG_CONVERT=/opt/local/bin/convert
+_PROG_TOUCH=/usr/bin/touch
+_PROG_SETFILE=/usr/bin/SetFile
+_PROG_GETFILEINFO=/usr/bin/GetFileInfo
+_PROG_STAT=/opt/local/bin/gstat
+_PROG_FFMPEG=/opt/local/bin/ffmpeg
+_PROG_NICE=/usr/bin/nice
+_PROG_CUT=/usr/bin/cut
+_PROG_DATE=/opt/local/bin/gdate
+_PROG_MP4EXTRACT=/usr/local/bin/mp4extract
+_PROG_MP4EDIT=/usr/local/bin/mp4edit
 
 # _require_argument()
 #
@@ -222,13 +237,13 @@ do
       ;;
     *)
       # Use any final argument as target export dir
-      _EXPORT_DIR="${__option}"
+      _EXPORT_ROOT="${__option}"
       ;;
   esac
   shift
 done
 
-if [[ -z "${_EXPORT_DIR}" ]]; then
+if [[ -z "${_EXPORT_ROOT}" ]]; then
   _die printf "Error: export dir option required.\\n"
 fi
 
@@ -237,13 +252,95 @@ fi
 ###############################################################################
 
 _check_prereq() {
-  return
+  # Check if source an export dir exists
+  if [[ ! -d ${_EXPORT_ROOT} ]]; then 
+    _die printf "Error: export dir \"%s\" does not exist, aborting\\n" "${_EXPORT_ROOT}";
+  elif [[ ! -d ${_SOURCE_DIR} ]]; then 
+    _die printf "Error: source dir \"%s\" does not exist, aborting\\n" "${_SOURCE_DIR}";
+  fi
+  
+  # Check if tools exist
+  local _have_tools=1
+  if [[ ! -x "${_PROG_EXIFTOOL}" ]]; then echo "exiftool not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_FILE}" ]]; then echo "file not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_CONVERT}" ]]; then echo "convert not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_TOUCH}" ]]; then echo "touch not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_STAT}" ]]; then echo "(g)stat not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_FFMPEG}" ]]; then echo "ffmpeg not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_NICE}" ]]; then echo "nice not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_CUT}" ]]; then echo "cut not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_DATE}" ]]; then echo "(g)date not found"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_MP4EXTRACT}" ]]; then echo "mp4extract not found - get from https://www.bento4.com/"; _have_tools=0; fi
+  if [[ ! -x "${_PROG_MP4EDIT}" ]]; then echo "mp4edit not found - get from https://www.bento4.com/"; _have_tools=0; fi
+  
+  if [[ $(uname) == "Darwin" ]]; then
+    # If on Mac, we need SetFile/GetFile to fix creation date/time
+    if [[ ! -x "${_PROG_SETFILE}" ]]; then echo "SetFile not found"; _have_tools=0; fi
+    if [[ ! -x "${_PROG_GETFILEINFO}" ]]; then echo "GetFileInfo not found"; _have_tools=0; fi
+  else
+    # If not on Mac, set these progs to a noop command (untested)
+    _PROG_SETFILE=true
+    _PROG_GETFILEINFO=true
+  fi
+
+  if [[ ${_have_tools} -eq 0 ]]; then
+    _die printf "Error: required tools missing, aborting\\n";
+  fi
+
+  # We need to match by extension case insensitively
+
+}
+
+_prep_input() {
+  # First set file date to creation date from metadata, movies and images 
+  # separately because different tags. Use -wm w to not create new tags
+  # See: https://photo.stackexchange.com/questions/83657/any-program-to-change-date-created-of-videos-to-actual-exif-data
+  # Not sure which works reliably for videos
+  # See: https://exiftool.org/forum/index.php?topic=6318.msg33921#msg33921
+
+  # Set case insensitive glob and nullglob (such that lack of file hit will 
+  # give null back instead of the glob string)
+  shopt -s nocaseglob
+  shopt -s nullglob
+
+  # First check if files exist to ensure exiftool is happy. The metadata 
+  # setting might fail because tags don't exist or cannot be written. Ignore 
+  # for now
+  if [[ -n "$(echo ${_SOURCE_DIR}/*{avi,mov,mp4})" ]]; then
+    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w ${_SOURCE_DIR}/*{avi,mov,mp4}
+    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w ${_SOURCE_DIR}/*{avi,mov,mp4}
+  fi
+  if [[ -n "$(echo ${_SOURCE_DIR}/*{png,jpg})" ]]; then
+    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w ${_SOURCE_DIR}/*{png,jpg}
+    # If no exif timestamps, set here from filedate. Note that if no files 
+    # match the criterium, exiftool will return error code 2, hence we OR 
+    # this with true to ensure we don't quit on this command
+    # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
+    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+  fi
+
+  shopt -u nocaseglob
+  shopt -u nullglob
+}
+
+_prep_output() {
+  # Source_dir should be like 20101003_holiday_italy_rome_verona, output 
+  # directory will replace _ by space so iOS Photos app can search for 
+  # individual words
+  _EXPORT_DIR=${_EXPORT_ROOT}/$(basename ${_SOURCE_DIR} | tr "_" " ")
+  mkdir -p "${_EXPORT_DIR}"
 }
 
 _publish_pics() {
   _debug printf ">> Performing operation...\\n"
 
   _check_prereq
+
+  _prep_input
+
+  _prep_output
+
+
 
   # if ((_OPTION_X))
   # then
