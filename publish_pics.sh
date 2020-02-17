@@ -450,22 +450,6 @@ _publish_pics() {
   _convert_pics
 
   _tag_pics
-
-
-  # if ((_OPTION_X))
-  # then
-  #   printf "Perform a simple operation with --option-x.\\n"
-  # else
-  #   printf "Perform a simple operation.\\n"
-  # fi
-  # if [[ -n "${_SHORT_OPTION_WITH_PARAMETER}" ]]
-  # then
-  #   printf "Short option parameter: %s\\n" "${_SHORT_OPTION_WITH_PARAMETER}"
-  # fi
-  # if [[ -n "${_LONG_OPTION_WITH_PARAMETER}" ]]
-  # then
-  #   printf "Long option parameter: %s\\n" "${_LONG_OPTION_WITH_PARAMETER}"
-  # fi
 }
 
 ###############################################################################
