@@ -30,7 +30,7 @@
 # Bash Boilerplate: https://github.com/alphabetum/bash-boilerplate
 # Copyright (c) 2015 William Melody • hi@williammelody.com
 
-
+# set -xv
 ###############################################################################
 # Strict Mode
 ###############################################################################
@@ -51,8 +51,8 @@ set -o errtrace
 # successfully.
 set -o pipefail
 
-# Set $IFS to only newline and tab.
-IFS=$'\n\t'
+# Set $IFS to newline, tab, and space (was only \n\t)
+IFS=$'\n\t '
 
 ###############################################################################
 # Environment
@@ -253,9 +253,9 @@ fi
 
 _check_prereq() {
   # Check if source an export dir exists
-  if [[ ! -d ${_EXPORT_ROOT} ]]; then 
+  if [[ ! -d "${_EXPORT_ROOT}" ]]; then 
     _die printf "Error: export dir \"%s\" does not exist, aborting\\n" "${_EXPORT_ROOT}";
-  elif [[ ! -d ${_SOURCE_DIR} ]]; then 
+  elif [[ ! -d "${_SOURCE_DIR}" ]]; then 
     _die printf "Error: source dir \"%s\" does not exist, aborting\\n" "${_SOURCE_DIR}";
   fi
   
@@ -306,17 +306,17 @@ _prep_input() {
   # First check if files exist to ensure exiftool is happy. The metadata 
   # setting might fail because tags don't exist or cannot be written. Ignore 
   # for now
-  if [[ -n "$(echo ${_SOURCE_DIR}/*{avi,mov,mp4})" ]]; then
-    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w ${_SOURCE_DIR}/*{avi,mov,mp4}
-    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w ${_SOURCE_DIR}/*{avi,mov,mp4}
+  if [[ -n "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
   fi
-  if [[ -n "$(echo ${_SOURCE_DIR}/*{png,jpg})" ]]; then
-    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w ${_SOURCE_DIR}/*{png,jpg}
+  if [[ -n "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{png,jpg}
     # If no exif timestamps, set here from filedate. Note that if no files 
     # match the criterium, exiftool will return error code 2, hence we OR 
     # this with true to ensure we don't quit on this command
     # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
-    ${_PROG_EXIFTOOL} -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
   fi
 
   shopt -u nocaseglob
@@ -327,8 +327,115 @@ _prep_output() {
   # Source_dir should be like 20101003_holiday_italy_rome_verona, output 
   # directory will replace _ by space so iOS Photos app can search for 
   # individual words
-  _EXPORT_DIR=${_EXPORT_ROOT}/$(basename ${_SOURCE_DIR} | tr "_" " ")
+  _EXPORT_DIR=${_EXPORT_ROOT}/$(basename "${_SOURCE_DIR}" | tr "_" " ")
   mkdir -p "${_EXPORT_DIR}"
+}
+
+_convert_pics() {
+  local _file
+  local _mime
+  local _isslomo
+  local _isiphone
+
+  shopt -s nocaseglob
+  shopt -s nullglob
+
+  # while read -r _file; do
+  for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4}); do
+    _debug printf "${_file}"
+    # # Use mime-type to distinguish between video and images
+    _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
+    if [[ "${_mime}" =~ ^image/ ]]; then
+      _debug printf "%s Parsing image" "${_file}"
+      # Use \> to only resize larger images than desired size 
+      # http://www.imagemagick.org/Usage/resize/#shrink
+      # https://stackoverflow.com/a/6387086
+      ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 ${_SOURCE_DIR}/${_file} "${_EXPORT_DIR}/${_file}"
+    elif [[ "${_mime}" =~ ^video/ ]]; then
+      _debug printf "%s Parsing video" "${_file}"
+      # From ffmpeg info, look for three-digit fps (xxx.xx fps), which 
+      # means it's slomo. We could make this more exact by checking for 
+      # fps > 30, but that's too complicated
+      # @FIXME this command is very fragile
+      _isslomo=$(${_PROG_FFMPEG} -i ${_SOURCE_DIR}/${_file} 2>&1 | grep "[0-9]\{3,\}.[0-9]\{2,\} fps," || true)
+      if  [[ -n ${_isslomo} ]]; then
+        echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
+        read answer
+      else
+        # Convert to nice file format. Get the video metadata date 
+        # from the modification time (stat) of the source file
+        # Reduce output clutter: -hide_banner -nostats -loglevel error 
+        # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
+        nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slow -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+
+        # @FIXME this check is very fragile
+        _isiphone=$(echo ${_SOURCE_DIR}/${_file} | grep "IMG_.*MOV" || true)
+        if  [[ -n ${_isiphone} ]]; then
+          # Fix GPS metadata by transplanting literal with https://www.bento4.com/
+          # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
+          ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/metadata-gps"
+          ${_PROG_MP4EDIT} --insert moov:"${_EXPORT_DIR}/metadata-gps" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
+          mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+        fi
+      fi
+    else
+      _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
+    fi
+
+    # Always set newly created file datetime to original datetime
+    ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
+    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+ done
+ # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
+ # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+
+  shopt -u nocaseglob
+  shopt -u nullglob
+}
+
+_tag_pics() {
+  # After converting images, set keywords on all newly converted files. Assume our exportdir is formatted as follows: <date> <keyword1> <keyword2> <keywordN>, each keyword space-separated. Here we apply all of exportdir as one keyword, as well as all keywords (i.e. the second word onward) as individual keywords.
+
+  shopt -s nocaseglob
+  shopt -s nullglob
+  local _albumdir_tag
+  local _albumdir_tag_nodate
+  local _exiftags
+  local _pngtags
+  local _keyword
+
+
+  # All tags in lower case to reduce number of unique keywords
+  _albumdir_tag=$(basename "${_EXPORT_DIR}" | tr '[:upper:]' '[:lower:]')
+  _exiftags=()
+  _exiftags+="-IPTC:Keywords+=${_albumdir_tag}"
+  _pngtags=()
+  _pngtags+="-XMP:Subject+=${_albumdir_tag}"
+  
+  # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
+  _albumdir_tag_nodate=${_albumdir_tag#* }
+  # use ${=albumdir_tag_nodate} for zsh, see https://scriptingosx.com/2019/08/moving-to-zsh-part-8-scripting-zsh/
+  # Loop over words in string
+  # https://stackoverflow.com/a/30212526
+  local -a _albumdir_tag_nodate_arr
+  read -ra _albumdir_tag_nodate_arr <<< "${_albumdir_tag_nodate}"
+  for _keyword in "${_albumdir_tag_nodate_arr[@]}"; do
+      if [ $(echo $_keyword | wc -c) -gt 3 ]; then
+          _exiftags+="-IPTC:Keywords+=${_keyword}"
+          _pngtags+="-XMP:Subject+=${_keyword}"
+      fi
+  done
+  # Add png tags and exif tags separately
+  # See https://stackoverflow.com/questions/19154596/exiftool-to-create-osx-visible-xmp-metadata-in-png-images
+  if [[ -n "$(echo "${_EXPORT_DIR}"/*png)" ]]; then
+    echo ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original ${_pngtags} "-DateTimeOriginal>FileModifyDate" ${_EXPORT_DIR}/*png
+  fi
+  if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg)" ]]; then
+    echo ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original ${_exiftags} "-DateTimeOriginal>FileModifyDate" ${_EXPORT_DIR}/*jpg
+  fi
+
+  shopt -u nocaseglob
+  shopt -u nullglob
 }
 
 _publish_pics() {
@@ -340,6 +447,9 @@ _publish_pics() {
 
   _prep_output
 
+  _convert_pics
+
+  _tag_pics
 
 
   # if ((_OPTION_X))
