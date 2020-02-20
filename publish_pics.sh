@@ -501,9 +501,9 @@ _publish_pics() {
 
   _convert_pics
 
-  _convert_vids
-
   _tag_pics
+
+  _convert_vids
 }
 
 ###############################################################################
