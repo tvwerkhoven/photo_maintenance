@@ -364,7 +364,12 @@ _convert_pics() {
   shopt -s nocaseglob
   shopt -s nullglob
 
-  # while read -r _file; do
+  # Check if we have any files
+  if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
+    printf "Warning: no pictures found, are you sure source dir is correct?\n"
+    return
+  fi
+
   for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
     _debug printf "${_file}"
     # # Use mime-type to distinguish between video and images
@@ -408,7 +413,12 @@ _convert_vids() {
   shopt -s nocaseglob
   shopt -s nullglob
 
-  # while read -r _file; do
+  # Check if we have any files
+  if [[ -z "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
+    printf "Warning: no videos found, are you sure source dir is correct?\n"
+    return
+  fi
+
   for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
     _debug printf "${_file}"
     # # Use mime-type to distinguish between video and images
