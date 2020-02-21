@@ -471,6 +471,11 @@ _convert_vids() {
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
+  # Transplant GPS coordinates @ 0x113, which is a 17 byte string
+  # echo "0000113: $(echo -n "+12.3456+001.2345" | xxd -p)" | xxd -r -c 17 - xxd.1
+  # Transplant iso 8601 datetime, a 24 byte string. Drop : in timezone to be compatible with Apple
+  # echo "000019f: $(gdate +%Y-%m-%dT%H:%M:%S%z | xxd -p)" | xxd -r -c 24 - xxd.1
+
   shopt -u nocaseglob
   shopt -u nullglob
 }
