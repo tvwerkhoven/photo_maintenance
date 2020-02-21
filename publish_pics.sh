@@ -347,9 +347,12 @@ _prep_output() {
   # Source_dir should be like 20101003_holiday_italy_rome_verona, output 
   # directory will replace _ by space so iOS Photos app can search for 
   # individual words
-  _EXPORT_DIR=${_EXPORT_ROOT}/$(basename "${_SOURCE_DIR}" | tr "_" " ")
+  local _SOURCE_DIR_ABS
+  _SOURCE_DIR_ABS="$(cd "${_SOURCE_DIR}" && pwd -P)"
+  _EXPORT_DIR=${_EXPORT_ROOT}/$(basename "${_SOURCE_DIR_ABS:-"0"}" | tr "_" " ")
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     mkdir -p "${_EXPORT_DIR}"
+    echo mkdir -p "${_EXPORT_DIR}"
   fi
 }
 
@@ -380,7 +383,7 @@ _convert_pics() {
       # http://www.imagemagick.org/Usage/resize/#shrink
       # https://stackoverflow.com/a/6387086
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 ${_SOURCE_DIR}/${_file} "${_EXPORT_DIR}/${_file}"
+        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
