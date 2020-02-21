@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # # About
-#
+#_convert_pics
 # Publish selected pictures and videos for web-sharing (i.e. smaller), which
 # can subsequently be copied to iPhone so one can store more pics on a phone
 #
@@ -167,7 +167,7 @@ _CONV_PICS=1
 _CONV_VIDS=1
 _DRY_RUN=0
 # Initialize additional expected option variables.
-_EXPORT_ROOT=""
+_EXPORT_ROOT=
 _SOURCE_DIR="."
 
 _PROG_EXIFTOOL=/opt/local/bin/exiftool
@@ -258,6 +258,11 @@ done
 
 _check_prereq() {
   _debug printf "_check_prereq()" 
+  if [[ -z "${_EXPORT_ROOT}" ]]; then 
+    _print_help
+    exit
+  fi
+
   # Check if source an export dir exists
   if [[ ! -d "${_EXPORT_ROOT}" ]]; then 
     _die printf "Error: export dir \"%s\" does not exist, aborting\\n" "${_EXPORT_ROOT}";
