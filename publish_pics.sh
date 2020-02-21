@@ -251,9 +251,6 @@ do
   shift
 done
 
-if [[ -z "${_EXPORT_ROOT}" ]]; then
-  _die printf "Error: export dir option required.\\n"
-fi
 
 ###############################################################################
 # Program Functions
