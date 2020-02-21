@@ -321,17 +321,21 @@ _prep_input() {
 
   if [[ "${_CONV_VIDS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
     _debug printf "Preparing timestamps on movies"
-    # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
-    # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+    fi
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
     _debug printf "Preparing timestamps on pictures"
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{png,jpg}
-    # If no exif timestamps, set here from filedate. Note that if no files 
-    # match the criterium, exiftool will return error code 2, hence we OR 
-    # this with true to ensure we don't quit on this command
-    # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{png,jpg}
+      # If no exif timestamps, set here from filedate. Note that if no files 
+      # match the criterium, exiftool will return error code 2, hence we OR 
+      # this with true to ensure we don't quit on this command
+      # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+    fi
   fi
 
   shopt -u nocaseglob
@@ -344,7 +348,9 @@ _prep_output() {
   # directory will replace _ by space so iOS Photos app can search for 
   # individual words
   _EXPORT_DIR=${_EXPORT_ROOT}/$(basename "${_SOURCE_DIR}" | tr "_" " ")
-  mkdir -p "${_EXPORT_DIR}"
+  if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+    mkdir -p "${_EXPORT_DIR}"
+  fi
 }
 
 _convert_pics() {
@@ -368,14 +374,18 @@ _convert_pics() {
       # Use \> to only resize larger images than desired size 
       # http://www.imagemagick.org/Usage/resize/#shrink
       # https://stackoverflow.com/a/6387086
-      ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 ${_SOURCE_DIR}/${_file} "${_EXPORT_DIR}/${_file}"
+      if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 ${_SOURCE_DIR}/${_file} "${_EXPORT_DIR}/${_file}"
+      fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
     fi
 
     # Always set newly created file datetime to original datetime
-    ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
-    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
+      ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+    fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
@@ -418,26 +428,32 @@ _convert_vids() {
         # from the modification time (stat) of the source file
         # Reduce output clutter: -hide_banner -nostats -loglevel error 
         # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
-        nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+        if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+        fi
         _debug printf "Conversion done"
+
 
         # @FIXME this check for iphone videos is very fragile
         _isiphone=$(echo ${_SOURCE_DIR}/${_file} | grep "IMG_.*MOV" || true)
         if  [[ -n ${_isiphone} ]]; then
           # Fix GPS metadata by transplanting literal with https://www.bento4.com/
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
-          ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/metadata-gps"
-          ${_PROG_MP4EDIT} --insert moov:"${_EXPORT_DIR}/metadata-gps" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
-          mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+          if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+            ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/metadata-gps"
+            ${_PROG_MP4EDIT} --insert moov:"${_EXPORT_DIR}/metadata-gps" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
+            mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+          fi
         fi
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
     fi
-
-    # Always set newly created file datetime to original datetime
+  # Always set newly created file datetime to original datetime
+  if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
     ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+  fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
@@ -482,10 +498,14 @@ _tag_pics() {
   # See https://stackoverflow.com/questions/19154596/exiftool-to-create-osx-visible-xmp-metadata-in-png-images
   # 
   if [[ -n "$(echo "${_EXPORT_DIR}"/*png)" ]]; then
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_pngtags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*png
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_pngtags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*png
+    fi
   fi
   if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg)" ]]; then
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_exiftags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*jpg
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_exiftags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*jpg
+    fi
   fi
 
   shopt -u nocaseglob
