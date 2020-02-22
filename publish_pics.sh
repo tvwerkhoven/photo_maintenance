@@ -325,8 +325,10 @@ _prep_input() {
   if [[ "${_CONV_VIDS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
     _debug printf "Preparing timestamps on movies"
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+      # @TODO Check which timestamp we should use here, and what the differences are
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+      # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+      # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
     fi
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
