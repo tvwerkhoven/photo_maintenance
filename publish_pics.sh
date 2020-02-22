@@ -148,13 +148,16 @@ can subsequently be copied to iPhone so one can store more pics on a phone
 
 Usage:
   ${_ME} [--options] <export_root>
-  ${_ME} -h | --help --dry-run -s | --sourcedir
+  ${_ME} -h | --help --debug --no-vids --no-pics --dry-run -s | --sourcedir
 
 Options:
   -h --help  Display this help information.
-  --dry-run  Only check which files would be copied, do not convert/copy
-  -s --sourcedir Directory to read from, defaults to current dir
-  <export_root> Directory to create output directory and files in
+  --debug    Print extra processing info.
+  --dry-run  Only check which files would be copied, do not convert/copy.
+  --no-vids  Do not process videos
+  --no-pics  Do not process pictures
+  -s --sourcedir Directory to read from, defaults to current dir.
+  <export_root> Directory to create output directory and files in.
 HEREDOC
 }
 
@@ -217,14 +220,14 @@ do
     --debug)
       _USE_DEBUG=1
       ;;
+    --dry-run)
+      _DRY_RUN=1
+      ;;
     --no-vids)
       _CONV_VIDS=0
       ;;
     --no-pics)
       _CONV_PICS=0
-      ;;
-    --dry-run)
-      _DRY_RUN=1
       ;;
     -s)
       _require_argument "${__option}" "${__maybe_param}"
