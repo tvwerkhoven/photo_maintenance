@@ -449,7 +449,7 @@ _convert_vids() {
         if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
           nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
         fi
-        _debug printf "Conversion done"
+        _debug printf "${_file} Conversion done"
 
 
         # @FIXME this check for iphone videos is very fragile
@@ -458,6 +458,7 @@ _convert_vids() {
           # Fix GPS metadata by transplanting literal with https://www.bento4.com/
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
           if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+            _debug printf "${_file} Fixing/transplanting iOS geotag"
             ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/metadata-gps"
             ${_PROG_MP4EDIT} --insert moov:"${_EXPORT_DIR}/metadata-gps" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
             mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
@@ -469,8 +470,9 @@ _convert_vids() {
     fi
   # Always set newly created file datetime to original datetime
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-    ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
-    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+    _debug printf "${_file} Setting timestamp"
+    ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
