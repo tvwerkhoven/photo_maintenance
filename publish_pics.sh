@@ -173,6 +173,9 @@ _DRY_RUN=0
 _EXPORT_ROOT=
 _SOURCE_DIR="."
 
+_GPX_FMT_PATH="/tmp/gpx.fmt"
+_MOOV_META_PATH="/tmp/moov-meta-atom.bin"
+
 _PROG_EXIFTOOL=/opt/local/bin/exiftool
 _PROG_FILE=/usr/bin/file
 _PROG_CONVERT=/opt/local/bin/convert
@@ -347,6 +350,142 @@ _prep_input() {
   shopt -u nullglob
 }
 
+_geotag_all() {
+  _debug printf "_geotag_all()" 
+  # Geotag all files not already geotagged. For videos, fix iOS/macOS 
+  # compatibility by transplanting known moov/meta atom into mp4 videos.
+  shopt -s nocaseglob
+  shopt -s nullglob
+
+  # Store gpx.fmt in script so we don't have extra files
+  # From https://github.com/exiftool/exiftool/blob/master/fmt_files/gpx.fmt
+  cat <<HEREDOC > "${_GPX_FMT_PATH}"
+#------------------------------------------------------------------------------
+# File:         gpx.fmt
+#
+# Description:  Example ExifTool print format file to generate a GPX track log
+#
+# Usage:        exiftool -p gpx.fmt -ee FILE [...] > out.gpx
+#
+# Requires:     ExifTool version 10.49 or later
+#
+# Revisions:    2010/02/05 - P. Harvey created
+#               2018/01/04 - PH Added IF to be sure position exists
+#               2018/01/06 - PH Use DateFmt function instead of -d option
+#               2019/10/24 - PH Preserve sub-seconds in GPSDateTime value
+#
+# Notes:     1) Input file(s) must contain GPSLatitude and GPSLongitude.
+#            2) The -ee option is to extract the full track from video files.
+#            3) The -fileOrder option may be used to control the order of the
+#               generated track points when processing multiple files.
+#------------------------------------------------------------------------------
+#[HEAD]<?xml version="1.0" encoding="utf-8"?>
+#[HEAD]<gpx version="1.0"
+#[HEAD] creator="ExifTool \$ExifToolVersion"
+#[HEAD] xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+#[HEAD] xmlns="http://www.topografix.com/GPX/1/0"
+#[HEAD] xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
+#[HEAD]<trk>
+#[HEAD]<number>1</number>
+#[HEAD]<trkseg>
+#[IF]  \$gpslatitude \$gpslongitude
+#[BODY]<trkpt lat="\$gpslatitude#" lon="\$gpslongitude#">
+#[BODY]  <ele>\$gpsaltitude#</ele>
+#[BODY]  <time>\${DateTimeOriginal#;my (\$ss)=/\.\d+/g;DateFmt("%Y-%m-%dT%H:%M:%S%z");s/Z/\${ss}Z/ if \$ss}</time>
+#[BODY]</trkpt>
+#[TAIL]</trkseg>
+#[TAIL]</trk>
+#[TAIL]</gpx>
+HEREDOC
+
+  # Make gpx file of all files (pics and vids), using datetimeoriginal which 
+  # seems more robust than gpsdatetime used originally in gpx.fmt. Also use 
+  # explicit timezone in gpx file instead of ignoring timezone. Note that 
+  # this breaks the subsecond accuracy as the Z is no longer part of the 
+  # timestamp string and thus cannot be replaced by \${ss}Z.
+  # @TODO fix or remove subsecond accuracy in gpx.fmt template
+  ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original -r -if '$GPSLatitude' -fileOrder DateTimeOriginal -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
+
+  # Apply to files without geotag, only movies for now as these are more 
+  # difficult to tag with GUI. Add || true in case all files already have geotag
+  # https://exiftool.org/forum/index.php?topic=7330.0
+  # https://exiftool.org/geotag.html
+  ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original -if 'not $GPSLatitude' -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" -P "${_EXPORT_DIR}"/ || true
+
+  # Other solutions (kept here for reference)  
+  # https://exiftool.org/forum/index.php?topic=5977.0
+  # https://exiftool.org/forum/index.php?topic=7826.0
+  # exiftool "-xmp:GPSLongitude<GPSLongitude" "-xmp:GPSLatitude<GPSLatitude"
+  # http://mit-webaction.sakura.ne.jp/xx_nouse/pd2/lib/exiftool/html/geotag.html
+  # exiftool -geotag log.gpx "-xmp:geotime<DateTimeOriginal" dir
+
+  # Now convert XMP geotag to iOS/macOS compatible geotag by inserting a 
+  # moov/meta atom into the mp4 file. We use a known-working moov/meta atom
+  # from an iOS video as template and edit geotag and timestamp, then insert 
+  # into new mp4
+
+  # Store known moov/meta template to disk for updating. Aqcuired via:
+  #   mp4extract mp4extract moov/meta moov-meta-atom.bin
+  #   base64 moov-meta-atom.bin
+  # and then anonymize datetime / geotag
+  cat <<HEREDOC | base64 --decode > "${_MOOV_META_PATH}"
+AAABt21ldGEAAAAiaGRscgAAAAAAAAAAbWR0YQAAAAAAAAAAAAAAAAAAAAAAyWtleXMAAAAAAAAABQAAACxtZHRhY29tLmFwcGxlLnF1aWNrdGltZS5sb2NhdGlvbi5JU082NzA5AAAAIG1kdGFjb20uYXBwbGUucXVpY2t0aW1lLm1ha2UAAAAhbWR0YWNvbS5hcHBsZS5xdWlja3RpbWUubW9kZWwAAAAkbWR0YWNvbS5hcHBsZS5xdWlja3RpbWUuc29mdHdhcmUAAAAobWR0YWNvbS5hcHBsZS5xdWlja3RpbWUuY3JlYXRpb25kYXRlAAAAxGlsc3QAAAAyAAAAAQAAACpkYXRhAAAAAQAAAAArMTIuMzQ1NiswMDEuMjM0NS0wMDEuNTEwLwAAAB0AAAACAAAAFWRhdGEAAAABAAAAAEFwcGxlAAAAIQAAAAMAAAAZZGF0YQAAAAEAAAAAaVBob25lIDZzAAAAHAAAAAQAAAAUZGF0YQAAAAEAAAAAMTMuMwAAADAAAAAFAAAAKGRhdGEAAAABAAAAADIwMjAtMDEtMDFUMDA6MDA6MDArMDAwMA==
+HEREDOC
+
+  local _file
+  local _hasmoovmeta
+  local _filedate
+  local _geotag_dec
+  local -a _geotag_dec_arr
+  local _geotag_dec_str
+
+  for _file in "${_EXPORT_DIR}"/*mp4; do
+    # Check if moov/meta atom is absent (if present, video is already ok, skip)
+    _hasmoovmeta=1
+    ${_PROG_MP4EXTRACT} moov/meta "${_file}" /tmp/out.log 2>/dev/null|| _hasmoovmeta=0
+    if [[ ${_hasmoovmeta} -eq 1 ]]; then
+      _debug printf "${_file} already has moov/meta atom, skipping"
+      continue
+    fi
+
+    # Get geotag as decimal from file. Should be in thanks to above exiftool -geotag command.
+    _geotag_dec=$(${_PROG_EXIFTOOL} -n -p '$gpslatitude,$gpslongitude' "${_file}")
+    if [[ -z "${_geotag_dec}" ]]; then
+      _debug printf "Warning: ${_file} does not have geotag although we expected this, skipping"
+      continue
+    fi      
+    # Use IFS temporarily to split string. Only works if split char is 1 character
+    # https://stackoverflow.com/questions/10586153/split-string-into-an-array-in-bash
+    IFS=','; read -ra _geotag_dec_arr <<< "$_geotag_dec"; unset IFS
+    
+    # Geo latitude should be 8 chars long: sign, two digits (0-90), comma, four digits
+    # Geo longitude should be 9 chars long: sign, three digits (0-180), comma, four digits
+    _geotag_dec_str=$(printf "%+08.4f%+09.4f" "${_geotag_dec_arr[0]}" "${_geotag_dec_arr[1]}")
+
+    # Transplant GPS coordinates @ 0x113, which is a 17 byte string
+    # echo "0000113: $(echo -n "+12.3456+001.2345" | xxd -p)" | xxd -r -c 17 - xxd.1
+    echo "0000113: $(echo -n "${_geotag_dec_str}" | xxd -p)" | xxd -r -c 17 - "${_MOOV_META_PATH}"
+
+    # Get file date as seconds since unix epoch, then format into date string
+    # Transplant ISO 8601 datetime @ 0x19f, a 24 byte string. Remove : in 
+    # timezone to be compatible with Apple
+    _filedate=$(gdate --date="@$(gstat --format "%W" "${_file}")" +%Y-%m-%dT%H:%M:%S%z)
+    _debug printf "$(basename "${_file}"): inserting ${_geotag_dec_str} - ${_filedate}"
+    echo "000019f: $(echo "${_filedate}" | xxd -p)" | xxd -r -c 24 - "${_MOOV_META_PATH}"
+
+    # Finally, insert moov/meta atom into output mp4 file
+    ${_PROG_MP4EDIT} --insert moov:"${_MOOV_META_PATH}" "${_file}" "${_file}-moov-meta.mp4"
+    # Fix timestamp (only file, metadata is OK)
+    ${_PROG_TOUCH} -r "${_file}" "${_file}-moov-meta.mp4"
+    # @TODO check if this is really necessary
+    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d "${_file}")" "${_file}-moov-meta.mp4"
+    mv "${_file}-moov-meta.mp4" "${_file}"
+  done
+
+  shopt -u nocaseglob
+  shopt -u nullglob
+}
+
 _prep_output() {
   _debug printf "_prep_output()" 
   # Source_dir should be like 20101003_holiday_italy_rome_verona, output 
@@ -458,8 +597,8 @@ _convert_vids() {
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
           if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
             _debug printf "${_file} Fixing/transplanting iOS geotag"
-            ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/metadata-gps"
-            ${_PROG_MP4EDIT} --insert moov:"${_EXPORT_DIR}/metadata-gps" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
+            ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_MOOV_META_PATH}"
+            ${_PROG_MP4EDIT} --insert moov:"${_MOOV_META_PATH}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
             mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
           fi
         fi
@@ -471,16 +610,13 @@ _convert_vids() {
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "${_file} Setting timestamp"
     ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    # @TODO check if this is really necessary
     ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "-DateTimeOriginal<FileCreateDate" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
-
-  # Transplant GPS coordinates @ 0x113, which is a 17 byte string
-  # echo "0000113: $(echo -n "+12.3456+001.2345" | xxd -p)" | xxd -r -c 17 - xxd.1
-  # Transplant iso 8601 datetime, a 24 byte string. Drop : in timezone to be compatible with Apple
-  # echo "000019f: $(gdate +%Y-%m-%dT%H:%M:%S%z | xxd -p)" | xxd -r -c 24 - xxd.1
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -550,6 +686,9 @@ _publish_pics() {
   _tag_pics
 
   _convert_vids
+
+  _geotag_all
+
 }
 
 ###############################################################################
