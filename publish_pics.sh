@@ -487,7 +487,7 @@ _convert_vids() {
 }
 
 _tag_pics() {
-  if [[ "${_CONV_PICS:-"0"}" -eq 1 ]]; then
+  if [[ "${_CONV_PICS:-"0"}" -eq 0 ]]; then
     return
   fi
 
