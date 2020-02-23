@@ -357,7 +357,6 @@ _prep_output() {
   _EXPORT_DIR=${_EXPORT_ROOT}/$(basename "${_SOURCE_DIR_ABS:-"0"}" | tr "_" " ")
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     mkdir -p "${_EXPORT_DIR}"
-    echo mkdir -p "${_EXPORT_DIR}"
   fi
 }
 
