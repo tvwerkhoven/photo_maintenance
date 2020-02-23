@@ -2,28 +2,66 @@
 
 This is a collection of scripts to maintain and publish photo archives.
 
-## Todo
+# Scripts
+
+1. publish_pics.sh: compress pictures & videos ready for publishing
+2. picasa2iptc.sh: convert Picasa rating to IPTC rating
+2. par_create.sh / par_check.sh: protect against bitrot via par2
+
+## publish_pics.sh
+
+To publish pictures in lower resolution to the web or phone. I use this to
+store more pictures on my iPhone, for example.
+
+Syntax:
+
+    ./publish_pics.sh --help --debug --no-vids --no-pics --dry-run -s | --sourcedir <sourcedir> <export_root>
+
+Example:
+
+    ./publish_pics.sh --debug -s ~/Pictures/200600519_wedding_party_new_york ./Pictures/pics_lossy
+
+1. Check if all required tools are available (edit paths in script pre-amble if needed)
+2. Prepare input: set file modification date to datetime created
+3. Make output directory in `export_root` based on `sourcedir` with `_` replaced by space so iOS >12 can look 
+for these folders as keywords when synchronizing using iTunes
+4. Convert pictures: for all png & jpg, convert down to 1920 pixels max size and quality 70, preserving metadata
+5. Tag pictures: Add XMP/IPTC keywords based on `sourcedir` to all pictures: split directory name by `_` and add each word as keyword if it's longer than 3 characters
+6. Convert videos: to x264 with quality crf 23 and max resolution 1280 and aac audio with vbr 3 rate (48-56 kbps/channel). If this is an iPhone video, transplant the moov/meta metadata atom to preserve geotags.
+7. Geotag all files: add geotag to files not already having one by interpolating between existing geotags. Additionally add moov/meta geotag on non-iPhone files so iOS/macOS can recognize these geotags
+
+## picasa2iptc.sh
+
+Convert Picasa rating to IPTC rating. Fairly straightforward.
+
+## par_create.sh / par_check.sh
+
+To prevent bitrot when the filesystem does not take care of this (e.g. on 
+macOS), one can use `par2` to manually create and check integrity.
+
+# Todo
 
 - Set keywords for videos: no idea how
-- Set GPS for non-iPhone videos: need to implement
 - Set timestamps in PNG files properly: need to implement
 - Figoure out HDR creation on Mac
 - Document and detail out current workflow
-- Clean up publish_pics.sh script
 
-# Archive integrity
+# On geotagging videos for iOS
 
-To prevent bitrot when the filesystem does not take care of this (e.g. on macOS), one can use `par2` to manually create and check integrity.
+iOS/macOS stores geotags in the moov/meta atom of mp4 metadata. This is not
+where ffmpeg or exiftool store video geotags normally. To mitigate this, I
+use the following approach:
 
-# Publishing
+1. Geotag videos using exiftool (using XMP metadata). Alternatively do this via your favorite GUI. Using exiftool allows interpolating a gpx track so I don't have to do it manually and can base my video geotags on existing other geotags.
+2. Harvest geotag metadata stored in the moov/meta atom from an existing iOS video using bento4 SDK mp4extract
+3. Update the moov/meta atom manually using the XMP geotag in the video file
+4. Transplant the updated moov/meta atom in the new video using mp4edit
 
-To publish pictures in lower resolution to the web or phone, this script scans a source directory for pictures with 5 star rating rating in the IPTC header and exports these pictures in lower resolution to a separate directory. I use this to store more pictures on my iPhone, for example.
+This is somewhat hacky but it seems to work reliably. The moov/meta atom
+stores more data than just geotag, such as iPhone model and iOS version, so 
+each transplanted video will have this wrong metadata.
 
-# Metadata in videos (geotag & keywords)
-
-Need to preserve geotag and keywords in videos for iOS
-
-## Geotag
+## Background info
 
 Same question, no answer:
 
@@ -46,55 +84,16 @@ Workaround using mp4extract:
 
 Source: https://trac.ffmpeg.org/ticket/6193
 
-## Geotag new videos
-
-TODO:
-1. Take existing moov/meta with geotag from iPhone video using mp4extract
-2. Get geotag from surrounding (by timestamp) images via exiftool -g
-2. Update GPS/datetime data in atom file
-3. Re-apply to new video file
-
-## Video keywords
+# On video keywords for Mac
 
 Not working:
-- Via Photos, then AirDrop
-- Via Photos, then export as original
-- Via Photos, then export
-- Via Photos, then sync with iPhone
-- Via Bridge, then Rollit
-- Via Exiftool, with IPTC:Keywords, then Rollit
-- Via Exiftool, with quicktime:keywords, then Rollit
-
-TODO: no idea
-
-## PNG timestamps
-
-TODO: keep original metadata (e.g. oplichter marktplaats)
-
-## Picture keywords
-
-Use directory name to add IPTC keywords to picture files
-
-    gfind . -maxdepth 1 -type d | tail -n +2  | while read outdir; do
-        # Split dirname in keywords, build exiftool command like:
-        # exiftool -IPTC:Keywords="20190930 vakantie vianden luxemburg" -IPTC:Keywords=vakantie -IPTC:Keywords=vianden -IPTC:Keywords=luxemburg
-        # Keywords always lowercase to reduce # of unique ones
-        outdir=$(basename ${outdir} | tr '[:upper:]' '[:lower:]')
-        # Start with full dirname as keyword (to search full string), use as array
-        exiftags=()
-        exiftags+="-IPTC:Keywords+=${outdir}"
-        # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
-        outdirkeywords=${outdir#* }
-        # use ${=outdirkeywords} for zsh, see https://scriptingosx.com/2019/08/moving-to-zsh-part-8-scripting-zsh/
-        for thiskeyword in ${=outdirkeywords}; do 
-            if [ $(echo $thiskeyword | wc -c) -gt 3 ]; then
-                exiftags+="-IPTC:Keywords+=${thiskeyword}"
-            fi
-        done
-        # Add keywords, update timestamp, do not store backups (i.e. _original)
-        exiftool -overwrite_original ${exiftags} $imgfile "$outdir"
-        jhead -ft ${outdir}/*
-    done
+- Add keywords via Photos.app, then AirDrop
+- Add keywords via Photos.app, then export as original
+- Add keywords via Photos.app, then export
+- Add keywords via Photos.app, then sync with iPhone
+- Add keywords via Bridge, then Rollit
+- Add keywords via Exiftool, with IPTC:Keywords, then Rollit
+- Add keywords via Exiftool, with quicktime:keywords, then Rollit
 
 # One-liners
 
@@ -175,26 +174,6 @@ From: https://superuser.com/questions/377431/transfer-exif-gps-info-from-one-ima
     done;
 
 
-## Touch movies based on creation date
-
-Works for iPhone movies, not well tested
-
-    for mov in *MOV; 
-      do echo $mov;
-      NEWDATE=$(ffmpeg -i $mov 2>&1 | grep creation_time | head -n 1 | awk '{print $3}');
-      echo $NEWDATE;
-      gtouch --date $NEWDATE $mov;
-    done
-
-    INFILE=IMG_9595.MOV; INFILEDATE=$(ffmpeg -i $INFILE 2>&1 | grep creation_time | head -n 1 | cut -f 2- -d:); gtouch --date $(echo $INFILEDATE) $INFILE
-
-    for INFILE in $arr;
-      do INFILEDATE=$(ffmpeg -i $INFILE 2>&1 | grep creation_time | head -n 1 | cut -f 2- -d:);
-      gtouch --date $(echo $INFILEDATE) $INFILE;
-    done
-
-arr=(IMG_9474.MOV IMG_9478.MOV IMG_9497.MOV IMG_9570.MOV IMG_9571.MOV IMG_9572.MOV IMG_9573.MOV IMG_9577.MOV)
-
 ## Add suffix to filenames
 
 For example to distinguish different photographers
@@ -220,25 +199,3 @@ Using these tags:
     -N, --crtimes               preserve create times (newness)
     -u, --update                skip files that are newer on the receiver
     -r, --recursive             recurse into directories
-
-# Convert picasa rating to iptc
-
-## Find picasa starred files
-
-    for dir in $(find . -type d); do
-        test ! -f ${dir}/.picasa.ini && continue
-        cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" | grep "^\[" | tr -d "[]"
-    done
-
-## Convert picasa star to iptc rating=5
-
-    for dir in $(find . -type d); do
-        test ! -f ${dir}/.picasa.ini && continue
-        cat $dir/.picasa.ini | tr -d "\r" | grep "^star=yes\|^\[" | pcregrep -M "\]\nstar" |  grep "^\[" | tr -d "[]" | while read starimg; do 
-            echo "${dir}/${starimg}"
-            exiftool-5.26 -rating=5 -q -q -m "${dir}/${starimg}"
-            jhead -ft "${dir}/${starimg}"
-        done
-    done
-
-WARNING - need to apply jhead -ft after exiftooling, or date is disturbed. Re-run 2018 and 2017
