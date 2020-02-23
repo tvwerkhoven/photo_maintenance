@@ -326,7 +326,7 @@ _prep_input() {
     _debug printf "Preparing timestamps on movies"
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
       # @TODO Check which timestamp we should use here, and what the differences are
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
       # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
       # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
     fi
@@ -334,12 +334,12 @@ _prep_input() {
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
     _debug printf "Preparing timestamps on pictures"
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{png,jpg}
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg}
       # If no exif timestamps, set here from filedate. Note that if no files 
       # match the criterium, exiftool will return error code 2, hence we OR 
       # this with true to ensure we don't quit on this command
       # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -P "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
     fi
   fi
 
@@ -522,12 +522,12 @@ _tag_pics() {
   # 
   if [[ -n "$(echo "${_EXPORT_DIR}"/*png)" ]]; then
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_pngtags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*png
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_pngtags[@]}" -P "${_EXPORT_DIR}"/*png
     fi
   fi
   if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg)" ]]; then
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_exiftags[@]}" "-DateTimeOriginal>FileModifyDate" "${_EXPORT_DIR}"/*jpg
+      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_exiftags[@]}" -P "${_EXPORT_DIR}"/*jpg
     fi
   fi
 
