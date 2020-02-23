@@ -5,24 +5,7 @@
 # Publish selected pictures and videos for web-sharing (i.e. smaller), which
 # can subsequently be copied to iPhone so one can store more pics on a phone
 #
-# # Usage
-#   ./publish_pics.sh <source_dir> <export_dir>
 #
-# # Processing
-#
-# For all images/videos (png, mov, mp4, jpg) with the 'rating' parameter set 
-# in <source_dir>, convert to lower resolution and store in <export_dir>.
-# The script will make a new directory in <export_dir> named <source_dir>,
-# where _ are replaced with space. This enables iOS >12 to look for these 
-# folders as keywords when
-# 
-# For images: downscale max resolution to 1920 pixels, quality 70, jpeg
-# For videos: convert to x264 with quality crf 23 and max resolution 1280 and 
-#             aac audio with vbr 3 rate (48-56 kbps/channel)
-#
-# # Examples
-#   ./publish_pics.sh ~/Pictures/200600519_wedding_party_new_york ./Pictures/pics_lossy
-# will create a folder "200600519 wedding party new york" in ./Pictures/pics_lossy
 #
 # # Sources
 #
