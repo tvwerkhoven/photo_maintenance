@@ -26,7 +26,7 @@ Example:
 3. Make output directory in `export_root` based on `sourcedir` with `_` replaced by space so iOS >12 can look 
 for these folders as keywords when synchronizing using iTunes
 4. Convert pictures: for all png & jpg, convert down to 1920 pixels max size and quality 70, preserving metadata
-5. Tag pictures: Add XMP/IPTC keywords based on `sourcedir` to all pictures: split directory name by `_` and add each word as keyword if it's longer than 3 characters
+5. Tag pictures: Add XMP/IPTC keywords based on `sourcedir` to all pictures: split directory name by `_` and add each word as keyword if it's 3 or more characters
 6. Convert videos: to x264 with quality crf 23 and max resolution 1280 and aac audio with vbr 3 rate (48-56 kbps/channel). If this is an iPhone video, transplant the moov/meta metadata atom to preserve geotags.
 7. Geotag all files: add geotag to files not already having one by interpolating between existing geotags. Additionally add moov/meta geotag on non-iPhone files so iOS/macOS can recognize these geotags
 
