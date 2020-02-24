@@ -238,7 +238,8 @@ _picasa2iptc() {
           printf "Warning: starred file not found: %s\\n" "${_dir}/${_inifile}"
         # Check if file is supported by exiftool (not AVI, see https://www.exiftool.org/#supported)
         elif [[ "${_inifile##*\.}" == "AVI" ]] || [[ "${_inifile##*\.}" == "avi" ]]; then
-          printf "Warning: cannot tag AVIs with exiftool, please process manually: %s\\n" "${_dir}/${_inifile}"
+          # printf "Warning: cannot tag AVIs with exiftool, please process manually: %s\\n" "${_dir}/${_inifile}"
+          # store problem files for later reporting
           _manualstarfiles+=("${_dir}/${_inifile}")
         else
           _starfiles+=("${_dir}/${_inifile}")
