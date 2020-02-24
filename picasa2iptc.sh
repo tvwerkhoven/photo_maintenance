@@ -254,10 +254,14 @@ _picasa2iptc() {
       printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
     else
       if [[ "${#_starfiles[@]}" -gt 0 ]]; then
+        # Count number of files found that already have rating
+        local _starred=$(exiftool -q -if 'not $rating' -printFormat '$filename' "${_starfiles[@]:-}" | wc -l || true)
+        printf "%s: found %s starred files of which %s without rating\\n" "${_dir}" "${#_starfiles[@]}" "${_starred}"
+        
         # -P to prevent changing the ModifyDate
-        # -quiet to not give output
-        printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
-        exiftool -q -P -rating=5 -overwrite_original "${_starfiles[@]:-}"
+        # -quiet to not give output except warnings/errors
+        # Only update files that do not have a rating already
+        exiftool -q -P -if 'not $rating' -rating=5 -overwrite_original "${_starfiles[@]:-}" || true
       fi
     fi
   done < <(find "${_OPTION_TARGETDIR}" -type d | sort)
