@@ -253,7 +253,7 @@ _picasa2iptc() {
         # -P to prevent changing the ModifyDate
         # -quiet to not give output
         printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
-        exiftool -q -P -rating=5 "${_starfiles[@]:-}"
+        exiftool -q -P -rating=5 -overwrite_original "${_starfiles[@]:-}"
       fi
     fi
   done < <(find "${_OPTION_TARGETDIR}" -type d | sort)
