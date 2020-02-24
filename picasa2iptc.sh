@@ -128,7 +128,7 @@ Usage:
 
 Options:
   -h --help  Display this help information.
-  --picasa-file Specify which picasa file to look for, default .picasa.ini
+  --picasa-file Specify which picasa file to look for, default *icasa.ini
   --dry-run  Only print number of starred files found per directory
 HEREDOC
 }
@@ -142,7 +142,7 @@ _DRY_RUN=0
 
 # Initialize additional expected option variables.
 _OPTION_TARGETDIR="."
-_OPTION_PICASA_FILE=".picasa.ini"
+_OPTION_PICASA_FILE="*icasa.ini"
 
 # _require_argument()
 #
@@ -210,7 +210,8 @@ _picasa2iptc() {
   local _dir
   local -a _manualstarfiles=()
   while read -r _dir; do
-    test ! -f "${_dir}/${_OPTION_PICASA_FILE}" && continue
+    # No quotes because we need to glob picasa file
+    test ! -f "${_dir}"/${_OPTION_PICASA_FILE} && continue
     _debug printf ">> parsing ${_dir}...\\n"
 
     # .picasa.ini is formatted as follows
@@ -243,7 +244,7 @@ _picasa2iptc() {
           _starfiles+=("${_dir}/${_inifile}")
         fi
       fi
-    done < <(cat "${_dir}/${_OPTION_PICASA_FILE}" | tr -d "\r")
+    done < <(cat "${_dir}"/${_OPTION_PICASA_FILE} | tr -d "\r")
     _debug printf ">> Found star file list: ${_starfiles[*]:-}\\n"
 
     # Given list of files, tag in IPTC
