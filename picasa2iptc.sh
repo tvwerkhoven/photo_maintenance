@@ -210,6 +210,7 @@ _picasa2iptc() {
   local _dir
   local _picasafile
   local -a _manualstarfiles=()
+  local -a _unfoundstarfiles=()
   while read -r _picasafile; do
     _dir=$(dirname "${_picasafile}")
     _debug printf ">> parsing ${_dir}...\\n"
@@ -236,6 +237,7 @@ _picasa2iptc() {
         # Check if file exists
         if ! [[ -f "${_dir}/${_inifile}" ]]; then
           printf "Warning: starred file not found: %s\\n" "${_dir}/${_inifile}"
+          _unfoundstarfiles+=("${_dir}/${_inifile}")
         # Check if file is supported by exiftool (not AVI, see https://www.exiftool.org/#supported)
         elif [[ "${_inifile##*\.}" == "AVI" ]] || [[ "${_inifile##*\.}" == "avi" ]]; then
           # printf "Warning: cannot tag AVIs with exiftool, please process manually: %s\\n" "${_dir}/${_inifile}"
@@ -267,8 +269,12 @@ _picasa2iptc() {
   done < <(find "${_OPTION_TARGETDIR}" -type f -name "${_OPTION_PICASA_FILE}" | sort)
 
   if [[ "${#_manualstarfiles[@]}" -gt 0 ]]; then
-    printf "Warning: process these files manually: %s\n" "${_manualstarfiles[*]:-}"
+    printf "Warning: process these files manually:\n %s\n" "${_manualstarfiles[*]:-}"
   fi
+  if [[ "${#_unfoundstarfiles[@]}" -gt 0 ]]; then
+    printf "Warning: fix these unfound files manually:\n %s\n" "${_unfoundstarfiles[*]:-}"
+  fi
+
 
   return
 }
