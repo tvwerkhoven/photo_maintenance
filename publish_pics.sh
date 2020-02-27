@@ -333,19 +333,18 @@ _prep_input() {
     # exiftool finds no matches (and returns 2)
     # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
     ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
-    fi
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
     ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
-    fi
   fi
 
   # If no exif timestamps, check and decide what to do.
   local _nodatetimeoriginal
-  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -p "$filename" ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
   if [[ -n "${_nodatetimeoriginal}" ]]; then
-    printf "Warning: %d files have no DateTimeOriginal:\n%s" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
+    printf "Warning: %d files have no DateTimeOriginal:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
+    read
   fi
 
   shopt -u nocaseglob
