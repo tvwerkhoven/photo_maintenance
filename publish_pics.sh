@@ -569,7 +569,7 @@ _convert_vids() {
 
   for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
     _debug printf "${_file}"
-    # # Use mime-type to distinguish between video and images
+    # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
       _debug printf "%s Parsing video" "${_file}"
