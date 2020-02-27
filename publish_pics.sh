@@ -532,7 +532,9 @@ _convert_pics() {
       # http://www.imagemagick.org/Usage/resize/#shrink
       # https://stackoverflow.com/a/6387086
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 70 "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
+        # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
+        # https://developers.google.com/speed/docs/insights/OptimizeImages
+        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
