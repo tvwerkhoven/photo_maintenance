@@ -328,22 +328,24 @@ _prep_input() {
   shopt -s nullglob
 
   if [[ "${_CONV_VIDS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-    _debug printf "Preparing timestamps on movies"
-    # We always use DateTimeOriginal as leading date. Add || true in case 
+    # We use CreateDate as leading date for videos. Add || true in case 
     # exiftool finds no matches (and returns 2)
+    _debug printf "Preparing timestamps on movies"
     # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
+    ${_PROG_EXIFTOOL} -quiet -quiet "-CreateDate>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
+    # We use DateTimeOriginal as leading date for pictures. Add || true in case 
+    # exiftool finds no matches (and returns 2)
+    ${_PROG_EXIFTOOL} -quiet -quiet "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
   fi
 
   # If no exif timestamps, check and decide what to do.
   local _nodatetimeoriginal
-  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
   if [[ -n "${_nodatetimeoriginal}" ]]; then
-    printf "Warning: %d files have no DateTimeOriginal:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
+    printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
     read
   fi
 
