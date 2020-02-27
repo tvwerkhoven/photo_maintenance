@@ -208,10 +208,10 @@ _picasa2iptc() {
 
   # Loop over all directories recursively, find picasa files
   local _dir
+  local _picasafile
   local -a _manualstarfiles=()
-  while read -r _dir; do
-    # No quotes because we need to glob picasa file
-    test ! -f "${_dir}"/${_OPTION_PICASA_FILE} && continue
+  while read -r _picasafile; do
+    _dir=$(dirname "${_picasafile}")
     _debug printf ">> parsing ${_dir}...\\n"
 
     # .picasa.ini is formatted as follows
@@ -245,7 +245,7 @@ _picasa2iptc() {
           _starfiles+=("${_dir}/${_inifile}")
         fi
       fi
-    done < <(cat "${_dir}"/${_OPTION_PICASA_FILE} | tr -d "\r")
+    done < <(cat "${_picasafile}" | tr -d "\r")
     _debug printf ">> Found star file list: ${_starfiles[*]:-}\\n"
 
     # Given list of files, tag in IPTC
@@ -264,7 +264,7 @@ _picasa2iptc() {
         exiftool -q -P -if 'not $rating' -rating=5 -overwrite_original "${_starfiles[@]:-}" || true
       fi
     fi
-  done < <(find "${_OPTION_TARGETDIR}" -type d | sort)
+  done < <(find "${_OPTION_TARGETDIR}" -type f -name "${_OPTION_PICASA_FILE}" | sort)
 
   if [[ "${#_manualstarfiles[@]}" -gt 0 ]]; then
     printf "Warning: process these files manually: %s\n" "${_manualstarfiles[*]:-}"
