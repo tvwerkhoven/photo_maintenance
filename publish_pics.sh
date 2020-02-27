@@ -572,7 +572,7 @@ _convert_vids() {
         fi
         _debug printf "${_file} Conversion done"
 
-        _isiphone=$(exiftool -q -q -m -p '$make' "${_SOURCE_DIR}/${_file}")
+        _isiphone=$(${_PROG_EXIFTOOL} -q -q -m -p '$make' "${_SOURCE_DIR}/${_file}")
         if  [[ "${_isiphone:-"0"}" = 'Apple' ]]; then
           # Fix GPS metadata by transplanting literal with https://www.bento4.com/
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
