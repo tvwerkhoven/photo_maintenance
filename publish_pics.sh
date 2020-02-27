@@ -316,7 +316,8 @@ _check_prereq() {
 _prep_input() {
   _debug printf "_prep_input()" 
   # First set file date to creation date from metadata, movies and images 
-  # separately because different tags. Use -wm w to not create new tags
+  # separately so we can chose what to convert. Use -wm w to not create new 
+  # tags
   # See: https://photo.stackexchange.com/questions/83657/any-program-to-change-date-created-of-videos-to-actual-exif-data
   # Not sure which works reliably for videos
   # See: https://exiftool.org/forum/index.php?topic=6318.msg33921#msg33921
@@ -326,29 +327,25 @@ _prep_input() {
   shopt -s nocaseglob
   shopt -s nullglob
 
-  # First check if files exist to ensure exiftool is happy. The metadata 
-  # setting might fail because tags don't exist or cannot be written. Ignore 
-  # for now
-
-  if [[ "${_CONV_VIDS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
+  if [[ "${_CONV_VIDS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on movies"
-    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      # @TODO Check which timestamp we should use here, and what the differences are
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
-      # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreationDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
-      # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-CreateDate>FileModifyDate" -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4}
+    # We always use DateTimeOriginal as leading date. Add || true in case 
+    # exiftool finds no matches (and returns 2)
+    # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
     fi
   fi
-  if [[ "${_CONV_PICS:-"0"}" -eq 1 && -n "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
+  if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
-    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg}
-      # If no exif timestamps, set here from filedate. Note that if no files 
-      # match the criterium, exiftool will return error code 2, hence we OR 
-      # this with true to ensure we don't quit on this command
-      # See https://exiftool.org/exiftool_pod.html#if-NUM-EXPR
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -P "-FileModifyDate>DateTimeOriginal" ${_SOURCE_DIR}/*{png,jpg} || true
+    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
     fi
+  fi
+
+  # If no exif timestamps, check and decide what to do.
+  local _nodatetimeoriginal
+  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '(not $datetimeoriginal)' -p "$filename" ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  if [[ -n "${_nodatetimeoriginal}" ]]; then
+    printf "Warning: %d files have no DateTimeOriginal:\n%s" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
   fi
 
   shopt -u nocaseglob
