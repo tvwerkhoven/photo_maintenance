@@ -204,7 +204,7 @@ done
 ###############################################################################
 
 _picasa2iptc() {
-  _debug printf ">> Performing operation...\\n"
+  _debug printf ">> Performing operation on ${_OPTION_TARGETDIR}...\\n"
 
   # Loop over all directories recursively, find picasa files
   local _dir
