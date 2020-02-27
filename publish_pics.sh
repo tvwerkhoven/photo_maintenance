@@ -343,13 +343,14 @@ _prep_input() {
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
   fi
 
+  # @TODO this code is extremely slow. Can we rely on errors from exiftool when setting filemodifydate and source tag does not exist?
   # If no exif timestamps, check and decide what to do.
-  local _nodatetimeoriginal
-  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
-  if [[ -n "${_nodatetimeoriginal}" ]]; then
-    printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
-    read
-  fi
+  # local _nodatetimeoriginal
+  # _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  # if [[ -n "${_nodatetimeoriginal}" ]]; then
+  #   printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
+  #   read
+  # fi
 
   shopt -u nocaseglob
   shopt -u nullglob
