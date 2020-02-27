@@ -554,6 +554,7 @@ _convert_vids() {
   _debug printf "_convert_vids()" 
   local _file
   local _mime
+  local _framerate
   local _isslomo
   local _isiphone
 
@@ -572,12 +573,14 @@ _convert_vids() {
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
       _debug printf "%s Parsing video" "${_file}"
-      # From ffmpeg info, look for three-digit fps (xxx.xx fps), which 
-      # means it's slomo. We could make this more exact by checking for 
-      # fps > 30, but that's too complicated
-      # @FIXME this command is very fragile
-      _isslomo=$(${_PROG_FFMPEG} -i ${_SOURCE_DIR}/${_file} 2>&1 | grep "[0-9]\{3,\}.[0-9]\{2,\} fps," || true)
-      if  [[ -n ${_isslomo} ]]; then
+      
+      # We cannot easily process slo-mo videos with ffmpeg, so we skip these.
+      # We detect these by checking for framerate > 30. To ensure we can do
+      # integer comparison, we take the string before the decimal period
+      # for comparison (${var%\.*})
+      _framerate=$(${_PROG_EXIFTOOL} -printFormat '$videoframerate' "${_SOURCE_DIR}/${_file}")
+      # /Users/tim/Pictures/2017/20170720_timelapse_balkon_iphone/IMG_2564.MOV
+      if  [[ "${_framerate%\.*}" -gt 30 ]]; then
         echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
         read answer
       else
