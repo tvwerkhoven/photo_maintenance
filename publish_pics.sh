@@ -442,7 +442,8 @@ HEREDOC
   local _geotag_dec_str
 
   for _file in "${_EXPORT_DIR}"/*mp4; do
-    # Check if moov/meta atom is absent (if present, video is already ok, skip)
+    # Check if moov/meta atom is absent by checking if mp4extract gives an 
+    # error. If no error, the atom is present, video is already ok, skip
     _hasmoovmeta=1
     ${_PROG_MP4EXTRACT} moov/meta "${_file}" /tmp/out.log 2>/dev/null|| _hasmoovmeta=0
     if [[ ${_hasmoovmeta} -eq 1 ]]; then
