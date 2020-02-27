@@ -311,8 +311,20 @@ _check_prereq() {
     _die printf "Error: required tools missing, aborting\\n";
   fi
 
-  # We need to match by extension case insensitively
+  # Check if we have any files with rating. Always quiet to prevent other output
 
+  # Set case insensitive glob and nullglob (such that lack of file hit will 
+  # give null back instead of the glob string)
+  shopt -s nocaseglob
+  shopt -s nullglob
+
+  local _havematches
+  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg} || true)
+  if [[ -z "${_havematches}" ]]; then
+    _die printf "No matches for this directory\n"
+  fi
+  shopt -u nocaseglob
+  shopt -u nullglob
 }
 
 _prep_input() {
