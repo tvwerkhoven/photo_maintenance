@@ -182,6 +182,8 @@ _GPX_FMT_PATH="/tmp/gpx.fmt"
 _MOOV_META_PATH="/tmp/moov-meta-atom.bin"
 
 _PROG_EXIFTOOL=/opt/local/bin/exiftool
+# http://mywiki.wooledge.org/BashFAQ/050#I.27m_constructing_a_command_based_on_information_that_is_only_known_at_run_time
+_PROG_EXIFTOOL_OPTS=(-quiet -quiet -ignoreMinorErrors)
 _PROG_FILE=/usr/bin/file
 _PROG_CONVERT=/opt/local/bin/convert
 _PROG_TOUCH=/usr/bin/touch
@@ -332,18 +334,18 @@ _prep_input() {
     # exiftool finds no matches (and returns 2)
     _debug printf "Preparing timestamps on movies"
     # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
-    ${_PROG_EXIFTOOL} -quiet -quiet "-CreateDate>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreateDate>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
     # We use DateTimeOriginal as leading date for pictures. Add || true in case 
     # exiftool finds no matches (and returns 2)
-    ${_PROG_EXIFTOOL} -quiet -quiet "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
   fi
 
   # If no exif timestamps, check and decide what to do.
   local _nodatetimeoriginal
-  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
   if [[ -n "${_nodatetimeoriginal}" ]]; then
     printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
     read
@@ -407,13 +409,13 @@ HEREDOC
   # this breaks the subsecond accuracy as the Z is no longer part of the 
   # timestamp string and thus cannot be replaced by \${ss}Z.
   # @TODO fix or remove subsecond accuracy in gpx.fmt template
-  ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original -r -if '$GPSLatitude' -fileOrder DateTimeOriginal -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -r -if '$GPSLatitude' -fileOrder DateTimeOriginal -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
 
   # Apply to files without geotag, only movies for now as these are more 
   # difficult to tag with GUI. Add || true in case all files already have geotag
   # https://exiftool.org/forum/index.php?topic=7330.0
   # https://exiftool.org/geotag.html
-  ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original -if 'not $GPSLatitude' -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" -P "${_EXPORT_DIR}"/ || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" -P "${_EXPORT_DIR}"/ || true
 
   # Other solutions (kept here for reference)  
   # https://exiftool.org/forum/index.php?topic=5977.0
@@ -519,7 +521,7 @@ _convert_pics() {
     return
   fi
 
-  for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
+  for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
     _debug printf "${_file}"
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
@@ -541,7 +543,7 @@ _convert_pics() {
     fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
- # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+ # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -569,7 +571,7 @@ _convert_vids() {
     return
   fi
 
-  for _file in $(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
+  for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
     _debug printf "${_file}"
     # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
@@ -605,7 +607,7 @@ _convert_vids() {
         fi
         _debug printf "${_file} Conversion done"
 
-        _isiphone=$(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -printFormat '$make' "${_SOURCE_DIR}/${_file}")
+        _isiphone=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -printFormat '$make' "${_SOURCE_DIR}/${_file}")
         if  [[ "${_isiphone:-"0"}" = 'Apple' ]]; then
           # Fix GPS metadata by transplanting literal with https://www.bento4.com/
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
@@ -624,11 +626,11 @@ _convert_vids() {
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "${_file} Setting timestamp"
     _touch_file_ref "${_SOURCE_DIR}/${_file:-0}" "${_EXPORT_DIR}/${_outfile:-0}"
-    # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
- # done < <(${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+ # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -671,12 +673,12 @@ _tag_pics() {
   # 
   if [[ -n "$(echo "${_EXPORT_DIR}"/*png)" ]]; then
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_pngtags[@]}" -P "${_EXPORT_DIR}"/*png
+      ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_pngtags[@]}" -P "${_EXPORT_DIR}"/*png
     fi
   fi
   if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg)" ]]; then
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "${_exiftags[@]}" -P "${_EXPORT_DIR}"/*jpg
+      ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_exiftags[@]}" -P "${_EXPORT_DIR}"/*jpg
     fi
   fi
 
