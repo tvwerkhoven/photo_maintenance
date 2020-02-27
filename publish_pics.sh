@@ -554,6 +554,7 @@ _convert_vids() {
 
   _debug printf "_convert_vids()" 
   local _file
+  local _outfile
   local _mime
   local _framerate
   local _isslomo
@@ -585,12 +586,22 @@ _convert_vids() {
         echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
         read answer
       else
-        # Convert to nice file format. Get the video metadata date 
-        # from the modification time (stat) of the source file
-        # Reduce output clutter: -hide_banner -nostats -loglevel error 
-        # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
         if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slower -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+          # If filename ends in -x264_aac.mp4, we've already converted the 
+          # movie in the source directory. In that case, simply copy the file 
+          # as we probably won't save much space anymore
+          if [[ "${_SOURCE_DIR}/${_file}" =~ -x264_aac.mp4$ ]]; then
+            _debug printf "${_file} already converted, copying instead."
+            _outfile="${_file}"
+            cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          else
+            # Convert to nice file format. Get the video metadata date 
+            # from the modification time (stat) of the source file
+            # Reduce output clutter: -hide_banner -nostats -loglevel error 
+            # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
+            _outfile="${_file}-x264_aac.mp4"
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slower -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          fi
         fi
         _debug printf "${_file} Conversion done"
 
@@ -601,8 +612,8 @@ _convert_vids() {
           if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
             _debug printf "${_file} Fixing/transplanting iOS geotag"
             ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_MOOV_META_PATH}"
-            ${_PROG_MP4EDIT} --insert moov:"${_MOOV_META_PATH}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4" "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4"
-            mv "${_EXPORT_DIR}/${_file}-x264_aac-gps.mp4" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+            ${_PROG_MP4EDIT} --insert moov:"${_MOOV_META_PATH}" "${_EXPORT_DIR}/${_outfile}" "${_EXPORT_DIR}/${_outfile}-gps"
+            mv "${_EXPORT_DIR}/${_outfile}-gps" "${_EXPORT_DIR}/${_outfile}"
           fi
         fi
       fi
@@ -612,7 +623,7 @@ _convert_vids() {
   # Always set newly created file datetime to original datetime
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "${_file} Setting timestamp"
-    _touch_file_ref "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    _touch_file_ref "${_SOURCE_DIR}/${_file:-0}" "${_EXPORT_DIR}/${_outfile:-0}"
     # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
