@@ -572,10 +572,8 @@ _convert_vids() {
         fi
         _debug printf "${_file} Conversion done"
 
-
-        # @FIXME this check for iphone videos is very fragile
-        _isiphone=$(echo ${_SOURCE_DIR}/${_file} | grep "IMG_.*MOV" || true)
-        if  [[ -n ${_isiphone} ]]; then
+        _isiphone=$(exiftool -q -q -m -p '$make' "${_SOURCE_DIR}/${_file}")
+        if  [[ "${_isiphone:-"0"}" = 'Apple' ]]; then
           # Fix GPS metadata by transplanting literal with https://www.bento4.com/
           # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
           if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
