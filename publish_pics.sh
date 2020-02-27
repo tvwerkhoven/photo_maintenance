@@ -144,6 +144,28 @@ Options:
 HEREDOC
 }
 
+###############################################################################
+# Touch file ref
+###############################################################################
+
+# _touch_file_ref()
+#
+# Usage:
+#   _touch_file_ref <ref> <target>
+#
+# Set creation & modification datetime of <target> file to <ref>
+_touch_file_ref() {
+  if [[ ! -f "${1}" || ! -f "${2}" ]]; then
+    die "Error: file ${1} or ${2} does not exist, should not happen"
+  else
+    # Fix timestamp (only file, metadata is OK)
+    ${_PROG_TOUCH} -r "${1}" "${2}"
+    # Use setfile to set creation time
+    # https://apple.stackexchange.com/questions/99536/changing-creation-date-of-a-file
+    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d "${1}")" "${2}"
+  fi
+}
+
 # Parse Options ###############################################################
 
 # Initialize program option variables.
@@ -458,10 +480,9 @@ HEREDOC
 
     # Finally, insert moov/meta atom into output mp4 file
     ${_PROG_MP4EDIT} --insert moov:"${_MOOV_META_PATH}" "${_file}" "${_file}-moov-meta.mp4"
+
     # Fix timestamp (only file, metadata is OK)
-    ${_PROG_TOUCH} -r "${_file}" "${_file}-moov-meta.mp4"
-    # @TODO check if this is really necessary
-    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d "${_file}")" "${_file}-moov-meta.mp4"
+    _touch_file_ref "${_file}" "${_file}-moov-meta.mp4"
     mv "${_file}-moov-meta.mp4" "${_file}"
   done
 
@@ -517,8 +538,7 @@ _convert_pics() {
 
     # Always set newly created file datetime to original datetime
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
-      ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}"
+      _touch_file_ref "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
     fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
@@ -590,10 +610,8 @@ _convert_vids() {
   # Always set newly created file datetime to original datetime
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "${_file} Setting timestamp"
-    ${_PROG_TOUCH} -r "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
-    # @TODO check if this is really necessary
-    ${_PROG_SETFILE} -d "$(${_PROG_GETFILEINFO} -d ${_SOURCE_DIR}/${_file})" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
-    ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "-DateTimeOriginal<FileCreateDate" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    _touch_file_ref "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    # ${_PROG_EXIFTOOL} -quiet -quiet -ignoreMinorErrors -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
