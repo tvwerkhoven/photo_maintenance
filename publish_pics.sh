@@ -626,8 +626,13 @@ _convert_vids() {
             # from the modification time (stat) of the source file
             # Reduce output clutter: -hide_banner -nostats -loglevel error 
             # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
+            # We want ~1 MPixel max video size (1280x720) and no upscaling, 
+            # use -2 to ensure even width/height:
+            # iw*min(1,sqrt(1280*720/ih/iw)):-2
+            # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
+            # https://trac.ffmpeg.org/wiki/Scaling
             _outfile="${_file}-x264_aac.mp4"
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slower -movflags use_metadata_tags -crf 28 -vf scale=1280:-1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -movflags use_metadata_tags -crf 28 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           fi
         fi
         _debug printf "${_file} Conversion done"
