@@ -466,6 +466,7 @@ HEREDOC
   local _geotag_dec_str
 
   for _file in "${_EXPORT_DIR}"/*mp4; do
+  # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$GPSLatitude' -p '$filename' "${_EXPORT_DIR}"/*mp4 | while read -r _file; do
     # Check if moov/meta atom is absent by checking if mp4extract gives an 
     # error. If no error, the atom is present, video is already ok, skip
     _hasmoovmeta=1
