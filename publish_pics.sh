@@ -476,7 +476,8 @@ HEREDOC
       continue
     fi
 
-    # Get geotag as decimal from file. Should be in thanks to above exiftool -geotag command.
+    # Get geotag as decimal from file. All files should have this after above
+    # exiftool -geotag command.
     _geotag_dec=$(${_PROG_EXIFTOOL} -n -p '$gpslatitude,$gpslongitude' "${_file}")
     if [[ -z "${_geotag_dec}" ]]; then
       _debug printf "Warning: ${_file} does not have geotag although we expected this, skipping"
