@@ -346,7 +346,7 @@ _prep_input() {
     # exiftool finds no matches (and returns 2)
     _debug printf "Preparing timestamps on movies"
     # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreateDate>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreateDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
