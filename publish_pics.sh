@@ -657,6 +657,8 @@ _convert_vids() {
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "${_file} Setting timestamp"
     _touch_file_ref "${_SOURCE_DIR}/${_file:-0}" "${_EXPORT_DIR}/${_outfile:-0}"
+    # For videos created with ffmpeg, also set metadata dates from the filemodifydate, as ffmpeg does not transfer metadata dates correctly
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" '-time:all<$FileModifyDate' -overwrite_original -wm w -P "${_EXPORT_DIR}/${_outfile:-0}"
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
  done
