@@ -577,7 +577,6 @@ _convert_vids() {
   local _outfile
   local _mime
   local _framerate
-  local _isslomo
   local _isiphone
 
   shopt -s nocaseglob
@@ -676,12 +675,12 @@ _tag_pics() {
   
   # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
   _albumdir_tag_nodate=${_albumdir_tag#* }
-  # Loop over words in string, add all words >=3 characters as keyword
+  # Loop over words in string, add all words >2 characters as keyword
   # https://stackoverflow.com/a/30212526
   local -a _albumdir_tag_nodate_arr
   read -ra _albumdir_tag_nodate_arr <<< "${_albumdir_tag_nodate}"
   for _keyword in "${_albumdir_tag_nodate_arr[@]}"; do
-      if [ $(echo $_keyword | wc -c) -gt 32 ]; then
+      if [ "${#_keyword}"  -gt 2 ]; then
           _exiftags+=("-IPTC:Keywords+=${_keyword}")
           _pngtags+=("-XMP:Subject+=${_keyword}")
       fi
