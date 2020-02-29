@@ -422,16 +422,21 @@ HEREDOC
   # this breaks the subsecond accuracy as the Z is no longer part of the 
   # timestamp string and thus cannot be replaced by \${ss}Z.
   # @TODO fix or remove subsecond accuracy in gpx.fmt template
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -r -if '$GPSLatitude' -fileOrder DateTimeOriginal -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -r -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
 
-  # If we found any geotags above (i.e. log.gpx is not empty), apply to files 
+  # If we did not find any geotags (i.e. log.gpx is empty), we can skip the 
+  # rest here
+  if [[ ! -s "${_EXPORT_DIR}/log.gpx" ]]; then
+    return
+  fi
+
+  # Apply geotag to files 
   # without geotag. In my workflow this is mostly videos as my GUI doesn't 
   # accept these. Add || true in case all files already have geotag
   # https://exiftool.org/forum/index.php?topic=7330.0
   # https://exiftool.org/geotag.html
-  if [[ -s "${_EXPORT_DIR}/log.gpx" ]]; then
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" -P "${_EXPORT_DIR}"/ || true
-  fi
+  # @TODO: use either DateTimeOriginal or DateCreated for videos, whichever is available.
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" "-geotime<CreateDate" -P "${_EXPORT_DIR}"/ || true
 
   # Other solutions (kept here for reference)  
   # https://exiftool.org/forum/index.php?topic=5977.0
