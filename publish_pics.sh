@@ -612,31 +612,31 @@ _convert_vids() {
       # for comparison (${var%\.*})
       _framerate=$(${_PROG_EXIFTOOL} -printFormat '$videoframerate' "${_SOURCE_DIR}/${_file}")
       # /Users/tim/Pictures/2017/20170720_timelapse_balkon_iphone/IMG_2564.MOV
-      if  [[ "${_framerate%\.*}" -gt 30 ]]; then
-        echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
-        read answer
-      else
-        if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-          # If filename ends in -x264_aac.mp4, we've already converted the 
-          # movie in the source directory. In that case, simply copy the file 
-          # as we probably won't save much space anymore
-          if [[ "${_SOURCE_DIR}/${_file}" =~ -x264_aac.mp4$ ]]; then
-            _debug printf "${_file} already converted, copying instead."
-            _outfile="${_file}"
-            cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
-          else
-            # Convert to nice file format. Get the video metadata date 
-            # from the modification time (stat) of the source file
-            # Reduce output clutter: -hide_banner -nostats -loglevel error 
-            # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
-            # We want ~1 MPixel max video size (1280x720) and no upscaling, 
-            # use -2 to ensure even width/height:
-            # iw*min(1,sqrt(1280*720/ih/iw)):-2
-            # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
-            # https://trac.ffmpeg.org/wiki/Scaling
-            _outfile="${_file}-x264_aac.mp4"
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -movflags use_metadata_tags -crf 28 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
-          fi
+      if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+        # If filename ends in -x264_aac.mp4, we've already converted the 
+        # movie in the source directory. In that case, simply copy the file 
+        # as we probably won't save much space anymore
+        if [[ "${_SOURCE_DIR}/${_file}" =~ -x264_aac.mp4$ ]]; then
+          _debug printf "${_file} already converted, copying instead."
+          _outfile="${_file}"
+          cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          continue
+        elif [[ "${_framerate%\.*}" -gt 30 ]]; then
+          echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
+          # read answer
+          continue
+        else
+          # Convert to nice file format. Get the video metadata date 
+          # from the modification time (stat) of the source file
+          # Reduce output clutter: -hide_banner -nostats -loglevel error 
+          # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
+          # We want ~1 MPixel max video size (1280x720) and no upscaling, 
+          # use -2 to ensure even width/height:
+          # iw*min(1,sqrt(1280*720/ih/iw)):-2
+          # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
+          # https://trac.ffmpeg.org/wiki/Scaling
+          _outfile="${_file}-x264_aac.mp4"
+          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slower -movflags use_metadata_tags -crf 28 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
         fi
         _debug printf "${_file} Conversion done"
 
