@@ -182,6 +182,63 @@ For example to distinguish different photographers
       do mv "$file" "${file%\.*}-reinier.${file##*\.}"
     done
 
+## Check if we have originals for converted videos
+
+
+    while read _file; do
+        if [[ ! -f ${_file%*-x264_aac.mp4} ]]; then
+            dirname "${_file%*-x264_aac.mp4}"
+        fi
+    done < <(find . -name "*-x264_aac.mp4") | uniq
+
+## Set all metadata time tags
+
+    exiftool '-time:all<$DateTimeORiginal' -wm w -P *aac.mp4
+    exiftool '-time:all<$ContentCreateDate' -wm w -P *aac.mp4
+    exiftool '-time:all<$FileModifyDate' -wm w -P *aac.mp4
+
+    touch -t 201702261838.52 TRIM_20170226_183852-basb.mp4-x264_aac.mp4
+    exiftool '-time:all<$FileModifyDate' -wm w -P *basb.mp4-x264_aac.mp4
+
+## Match time from adjacent files
+
+Manually
+
+    exiftool -q -p '$filename,$DateTimeOriginal' IMG_086*
+    exiftool -tagsfromfile IMG_0863.JPG '-time:all<$DateTimeOriginal' -wm w -P IMG_0862.MOV-x264_aac.mp4
+
+In a script (MVI_XXXX.AVI to IMG_XXXX.JPG)
+
+    find . -type f -name "MVI*" | while read -r _file; do
+      _ffile=$(basename $_file)
+      _id=${_ffile:4:4}
+      _lastrefffile=
+      find . -type f -name "IMG*" | sort | while read -r _reffile; do
+        _refffile=$(basename "${_reffile}")
+        _rid=${_refffile:4:4}
+        if [[ "${_rid}" -gt "${_id}" ]]; then
+          echo "${_ffile}" "${_lastrefffile}" "${_refffile}"
+          touch -r "${_lastrefffile}" "${_ffile}"
+          break
+        fi
+        _lastrefffile=${_refffile}
+      done
+    done
+
+
+## Set avi timestamps
+
+    ffmpeg -i MVI_0687.AVI.xvid.avi -metadata ICRD="2006-08-17 16:19:05+02:00" -c copy test.avi
+
+    find . -type f -name "MVI*" | while read -r _file; do
+      _filedate=$(gstat --format=%Y "${_file}")
+      _datestr=$(gdate --iso=s --date="@${_filedate}" | tr 'T' ' ')
+      ffmpeg -y -nostdin -i "${_file}" -metadata ICRD="${_datestr}" -c copy test.avi
+      touch -r "${_file}" test.avi
+      mv test.avi "${_file}"
+    done
+
+Source: https://superuser.com/questions/1141299/change-avi-metadata-creation-date-with-ffmpeg-issue
 
 ## Archive
 Manually archive pictures to (external) backup:
