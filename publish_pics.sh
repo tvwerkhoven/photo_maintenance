@@ -437,7 +437,7 @@ HEREDOC
   # https://exiftool.org/forum/index.php?topic=7330.0
   # https://exiftool.org/geotag.html
   # @TODO: use either DateTimeOriginal or DateCreated for videos, whichever is available.
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -GeoMaxExtSecs 18000 -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" "-geotime<CreateDate" -P "${_EXPORT_DIR}"/ || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -api GeoMaxExtSecs=18000 -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" "-geotime<CreateDate" -P "${_EXPORT_DIR}"/ || true
 
   # Other solutions (kept here for reference)  
   # https://exiftool.org/forum/index.php?topic=5977.0
