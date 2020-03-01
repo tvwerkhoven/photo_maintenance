@@ -562,6 +562,7 @@ _convert_pics() {
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
+      continue
     fi
 
     # Always set newly created file datetime to original datetime
@@ -653,6 +654,7 @@ _convert_vids() {
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
+      continue
     fi
   # Always set newly created file datetime to original datetime
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
