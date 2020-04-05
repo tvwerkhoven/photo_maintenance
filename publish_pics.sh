@@ -422,7 +422,7 @@ HEREDOC
   # this breaks the subsecond accuracy as the Z is no longer part of the 
   # timestamp string and thus cannot be replaced by \${ss}Z.
   # @TODO fix or remove subsecond accuracy in gpx.fmt template
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -r -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/* > "${_EXPORT_DIR}/log.gpx" || true
 
   # If we did not find any geotags (i.e. log.gpx is empty), we can skip the 
   # rest here
