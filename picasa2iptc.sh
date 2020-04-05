@@ -122,13 +122,14 @@ _print_help() {
 picsa2iptc -- convert Picasa picture rating to IPTC/XMP rating=5 via exiftool
 
 Usage:
-  ${_ME} [--picasa-file <picasafile>] [<target dir>]
+  ${_ME} [--picasa-file <picasafile>] [--dry-run] [--debug] [<target dir>]
   ${_ME} -h | --help
-  ${_ME} --dry-run
 
 Options:
   -h --help  Display this help information.
   --picasa-file Specify which picasa file to look for, default *icasa.ini
+  --starred  Set rating on files which have star=yes in picasa file (default)
+  --any      Set rating on any picture listed in picasa file
   --dry-run  Only print number of starred files found per directory
 HEREDOC
 }
@@ -143,6 +144,8 @@ _DRY_RUN=0
 # Initialize additional expected option variables.
 _OPTION_TARGETDIR="."
 _OPTION_PICASA_FILE="*icasa.ini"
+_OPTION_TAG_STARRED=0
+_OPTION_TAG_ANY=0
 
 # _require_argument()
 #
@@ -173,6 +176,12 @@ do
   case "${__option}" in
     -h|--help)
       _PRINT_HELP=1
+      ;;
+    --starred)
+      _OPTION_TAG_STARRED=1
+      ;;
+    --any)
+      _OPTION_TAG_ANY=1
       ;;
     --debug)
       _USE_DEBUG=1
@@ -231,10 +240,29 @@ _picasa2iptc() {
       if [[ "${_iniline}" =~ $_secpat ]]; then
         _inifile="${_iniline#[}"
         _inifile="${_inifile%%]}"
+
+        # If --any is given, tag any file.
+        # @TODO warning code duplication
+        if [[ "${_OPTION_TAG_ANY:-"0"}" -eq 1 ]]; then
+          # Check if file exists
+          _debug printf ">> Trying to add ${_inifile} because of --any\\n"
+          if ! [[ -f "${_dir}/${_inifile}" ]]; then
+            printf "Warning: starred file not found: %s\\n" "${_dir}/${_inifile}"
+            _unfoundstarfiles+=("${_dir}/${_inifile}")
+          # Check if file is supported by exiftool (not AVI, see https://www.exiftool.org/#supported)
+          elif [[ "${_inifile##*\.}" == "AVI" ]] || [[ "${_inifile##*\.}" == "avi" ]]; then
+            # printf "Warning: cannot tag AVIs with exiftool, please process manually: %s\\n" "${_dir}/${_inifile}"
+            # store problem files for later reporting
+            _manualstarfiles+=("${_dir}/${_inifile}")
+          else
+            _starfiles+=("${_dir}/${_inifile}")
+          fi
+        fi
       # Look for star=yes line. Every time we find this line, the most recent 
-      # file will be set to iptc rating=5
-      elif [[ "${_iniline}" =~ ^star=yes$ ]]; then
+      # file will be set to iptc rating=5 if --starred is given
+      elif [[ "${_iniline}" =~ ^star=yes$ && "${_OPTION_TAG_STARRED:-"0"}" -eq 1 ]]; then
         # Check if file exists
+        _debug printf ">> Trying to add ${_inifile} because of --starred\\n"
         if ! [[ -f "${_dir}/${_inifile}" ]]; then
           printf "Warning: starred file not found: %s\\n" "${_dir}/${_inifile}"
           _unfoundstarfiles+=("${_dir}/${_inifile}")
@@ -291,6 +319,11 @@ _picasa2iptc() {
 # Description:
 #   Entry point for the program, handling basic option parsing and dispatching.
 _main() {
+  if ((_OPTION_TAG_STARRED && _OPTION_TAG_ANY))
+  then
+    _die printf "Options --any and --starred are mutually exclusive\n"
+  fi
+
   if ((_PRINT_HELP))
   then
     _print_help
