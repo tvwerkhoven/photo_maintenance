@@ -97,6 +97,12 @@ Not working:
 
 # One-liners
 
+## Reducing file size for archiving
+
+For non-rated files, reduce to <=9M @ 75 quality with acceptable quality loss
+
+    for img in $(exiftool -m -q -q -if 'not $rating' -p '$filename' *{JPG,jpg}); do echo $img; convert -resize 3000x3000 -quality 75 $img temp.jpg && mv temp.jpg $img; done
+
 ## Find non-geotags
 Recursively find JPEG-files that have no geotag:
 
