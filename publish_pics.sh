@@ -546,7 +546,7 @@ _convert_pics() {
   fi
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg} | while read -r _file; do
     _debug printf "${_file}"
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
@@ -569,7 +569,7 @@ _convert_pics() {
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
       _touch_file_ref "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
     fi
- done
+ done || true)
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
@@ -592,14 +592,14 @@ _convert_vids() {
   shopt -s nocaseglob
   shopt -s nullglob
 
-  # Check if we have any files
+  # Check if we have any files as quick test to skip this dir
   if [[ -z "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
     printf "Warning: no videos found, are you sure source dir is correct?\n"
     return
   fi
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
     _debug printf "${_file}"
     # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
@@ -664,7 +664,7 @@ _convert_vids() {
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" '-time:all<$FileModifyDate' -overwrite_original -wm w -P "${_EXPORT_DIR}/${_outfile:-0}"
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
   fi
- done
+ done || true)
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
