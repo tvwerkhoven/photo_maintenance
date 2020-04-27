@@ -184,6 +184,7 @@ _MOOV_META_PATH="/tmp/moov-meta-atom.bin"
 _PROG_EXIFTOOL=/opt/local/bin/exiftool
 # http://mywiki.wooledge.org/BashFAQ/050#I.27m_constructing_a_command_based_on_information_that_is_only_known_at_run_time
 _PROG_EXIFTOOL_OPTS=(-quiet -quiet -ignoreMinorErrors)
+_PROG_EXIFTOOL_OPTS=(-quiet)
 _PROG_FILE=/usr/bin/file
 _PROG_CONVERT=/opt/local/bin/convert
 _PROG_TOUCH=/usr/bin/touch
@@ -553,11 +554,9 @@ _convert_pics() {
 
     # If we have a sidecar file, find matching image file.
     if [[  "${_file}" =~ .xmp$ ]]; then
-      _debug printf "xmp: ${_file}"
       local _imgfileext=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -p '$SidecarForExtension' "${_file}")
       _imgfile="${_file%.*}.${_imgfileext}"
     else
-      _debug printf "no xmp: ${_file}"
       _imgfile="${_file}"
     fi
 
