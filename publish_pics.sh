@@ -598,6 +598,10 @@ _convert_vids() {
     return
   fi
 
+  # Check if any of the existing files have rating tag set, else return from this function
+  # @TODO can we speed this up or merge this with the below command? We're now running command twice
+  # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} || return
+
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
   (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
     _debug printf "${_file}"
