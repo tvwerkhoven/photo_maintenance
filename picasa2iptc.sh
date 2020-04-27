@@ -7,7 +7,7 @@
 # Bash Boilerplate: https://github.com/alphabetum/bash-boilerplate
 # Copyright (c) 2015 William Melody • hi@williammelody.com
 
-
+# set -xv
 # Short form: set -u
 set -o nounset
 
@@ -281,7 +281,7 @@ _picasa2iptc() {
     # Given list of files, tag in IPTC
     if ((_DRY_RUN))
     then
-      printf "%s: %s\\n" "${_dir}" "${#_starfiles[@]}"
+      printf "%s: found %s starred files\\n" "${_dir}" "${#_starfiles[@]}"
     else
       if [[ "${#_starfiles[@]}" -gt 0 ]]; then
         # Count number of files found that already have rating
