@@ -319,7 +319,7 @@ _check_prereq() {
   shopt -s nullglob
 
   local _havematches
-  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg} || true)
+  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic} || true)
   if [[ -z "${_havematches}" ]]; then
     _die printf "No matches for this directory\n"
   fi
@@ -352,7 +352,7 @@ _prep_input() {
     _debug printf "Preparing timestamps on pictures"
     # We use DateTimeOriginal as leading date for pictures. Add || true in case 
     # exiftool finds no matches (and returns 2)
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg,heic} || true
   fi
 
   # @TODO this code is extremely slow. Can we rely on errors from exiftool when setting filemodifydate and source tag does not exist?
@@ -422,7 +422,7 @@ HEREDOC
   # this breaks the subsecond accuracy as the Z is no longer part of the 
   # timestamp string and thus cannot be replaced by \${ss}Z.
   # @TODO fix or remove subsecond accuracy in gpx.fmt template
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/*{png,jpg,mov,mp4} > "${_EXPORT_DIR}/log.gpx" || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/*{png,jpg,heic,mov,mp4} > "${_EXPORT_DIR}/log.gpx" || true
 
   # If we did not find any geotags (i.e. log.gpx is empty), we can skip the 
   # rest here
@@ -535,39 +535,61 @@ _convert_pics() {
   _debug printf "_convert_pics()" 
   local _file
   local _mime
+  local _imgfile
+  local _imgfileout
 
   shopt -s nocaseglob
   shopt -s nullglob
 
   # Check if we have any files
-  if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg})" ]]; then
-    printf "Warning: no pictures found, are you sure source dir is correct?\n"
+  if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg,heic})" ]]; then
+    printf "Warning: no  picturesfound, are you sure source dir is correct?\n"
     return
   fi
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
+
+    # If we have a sidecar file, find matching image file.
+    if [[  "${_file}" =~ .xmp$ ]]; then
+      _debug printf "xmp: ${_file}"
+      local _imgfileext=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -p '$SidecarForExtension' "${_file}")
+      _imgfile="${_file%.*}.${_imgfileext}"
+    else
+      _debug printf "no xmp: ${_file}"
+      _imgfile="${_file}"
+    fi
+
+    # For HEIC, export to JPG instead until we have good heic support 
+    # (i.e. -quality should not be 60 but 40 for equal quality, geotag not 
+    # written properly yet)
+    if [[  "${_imgfile}" =~ .heic$ ]]; then
+      _imgfileout="${_imgfile%.*}.jpg"
+    else
+      _imgfileout="${_imgfile}"
+    fi
+    
     # # Use mime-type to distinguish between video and images
-    _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
+    _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
     if [[  "${_mime}" =~ ^image/ ]]; then
-      _debug printf "%s Parsing image" "${_file}"
+      _debug printf "%s Parsing image" "${_imgfile}"
       # Use \> to only resize larger images than desired size 
       # http://www.imagemagick.org/Usage/resize/#shrink
       # https://stackoverflow.com/a/6387086
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
-        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
+        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
       fi
     else
-      _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
+      _debug printf "%s Unsupported mime-type: %s" "${_imgfile}" "${_mime}"
       continue
     fi
 
     # Always set newly created file datetime to original datetime
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      _touch_file_ref "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/${_file}"
+      _touch_file_ref "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
     fi
  done || true)
  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
@@ -716,7 +738,7 @@ _tag_pics() {
       ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_pngtags[@]}" -P "${_EXPORT_DIR}"/*png
     fi
   fi
-  if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg)" ]]; then
+  if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg,heic)" ]]; then
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
       ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_exiftags[@]}" -P "${_EXPORT_DIR}"/*jpg
     fi
