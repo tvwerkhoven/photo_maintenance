@@ -97,6 +97,17 @@ Not working:
 
 # One-liners
 
+## Preparing for marktplaats
+
+- anonimize exif
+- reduce resolution/size to 2MP
+
+
+    find . -type f -iname "*jpg" | while read file; do
+        convert -resize 2073600@ -auto-orient -strip "${file}" "${file%.*}-marktplaats.${file##*\.}"
+    done
+
+
 ## Reducing file size for archiving
 
 For non-rated files, reduce to <=9M @ 75 quality with acceptable quality loss
