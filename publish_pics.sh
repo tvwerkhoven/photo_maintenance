@@ -320,7 +320,7 @@ _check_prereq() {
   shopt -s nullglob
 
   local _havematches
-  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic} || true)
+  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} || true)
   if [[ -z "${_havematches}" ]]; then
     _die printf "No matches for this directory\n"
   fi
