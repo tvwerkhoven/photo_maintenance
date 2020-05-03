@@ -544,7 +544,7 @@ _convert_pics() {
 
   # Check if we have any files
   if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg,heic})" ]]; then
-    printf "Warning: no  picturesfound, are you sure source dir is correct?\n"
+    printf "Warning: no pictures found, are you sure source dir is correct?\n"
     return
   fi
 
