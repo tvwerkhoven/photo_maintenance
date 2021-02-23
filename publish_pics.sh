@@ -664,7 +664,7 @@ _convert_vids() {
           # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
           # https://trac.ffmpeg.org/wiki/Scaling
           _outfile="${_file}-x264_aac.mp4"
-          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v libx264 -preset slower -movflags use_metadata_tags -crf 28 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264_videotoolbox -preset slower -movflags use_metadata_tags -crf 28 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
         fi
         _debug printf "${_file} Conversion done"
 
