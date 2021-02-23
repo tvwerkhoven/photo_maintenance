@@ -347,7 +347,10 @@ _prep_input() {
     # exiftool finds no matches (and returns 2)
     _debug printf "Preparing timestamps on movies"
     # https://photo.stackexchange.com/questions/69959/when-is-each-of-these-exif-date-time-variables-created-and-in-what-circumstan
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreateDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
+    # For video, using Quicktime:CreationDate, as this is kept intact when 
+    # e.g. trimming a file in QuickTime, whereas Quicktime:CreateDate is set 
+    # to the digital creation date.
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreationDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
@@ -438,7 +441,7 @@ HEREDOC
   # https://exiftool.org/forum/index.php?topic=7330.0
   # https://exiftool.org/geotag.html
   # @TODO: use either DateTimeOriginal or DateCreated for videos, whichever is available.
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -api GeoMaxExtSecs=18000 -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" "-geotime<CreateDate" -P "${_EXPORT_DIR}"/ || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if 'not $GPSLatitude' -api GeoMaxExtSecs=18000 -geotag "${_EXPORT_DIR}/log.gpx" "-geotime<DateTimeOriginal" "-geotime<CreationDate" -P "${_EXPORT_DIR}"/ || true
 
   # Other solutions (kept here for reference)  
   # https://exiftool.org/forum/index.php?topic=5977.0
