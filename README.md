@@ -210,12 +210,19 @@ For example to distinguish different photographers
 
 ## Set all metadata time tags
 
-    exiftool '-time:all<$DateTimeORiginal' -wm w -P *aac.mp4
-    exiftool '-time:all<$ContentCreateDate' -wm w -P *aac.mp4
+    exiftool '-time:all<$DateTimeOriginal' -wm w -P *aac.mp4
+    exiftool '-time:all<$ContentCreateDate' -wm w -P *.mp4
     exiftool '-time:all<$FileModifyDate' -wm w -P *aac.mp4
+
 
     touch -t 201702261838.52 TRIM_20170226_183852-basb.mp4-x264_aac.mp4
     exiftool '-time:all<$FileModifyDate' -wm w -P *basb.mp4-x264_aac.mp4
+
+    exiftool -TagsFromFile $FIRSTFILE '-time:all<$DateTimeOriginal' 20200322_timelapse_plants_amaryllis-06-x264_aac.mp4
+
+Forcibly create DateTimeOriginal
+
+    exiftool '-DateTimeOriginal<$FileModifyDate' -wm wc -P *jpg
 
 ## Match time from adjacent files
 
@@ -247,10 +254,12 @@ In a script (MVI_XXXX.AVI to IMG_XXXX.JPG)
 
     ffmpeg -i MVI_0687.AVI.xvid.avi -metadata ICRD="2006-08-17 16:19:05+02:00" -c copy test.avi
 
-    find . -type f -name "MVI*" | while read -r _file; do
+Loop over files, set file modification time to CreateDate
+
+    find . -type f -name "*AVI" | while read -r _file; do
       _filedate=$(gstat --format=%Y "${_file}")
       _datestr=$(gdate --iso=s --date="@${_filedate}" | tr 'T' ' ')
-      ffmpeg -y -nostdin -i "${_file}" -metadata ICRD="${_datestr}" -c copy test.avi
+      ffmpeg -y -nostdin -i "${_file}" -movflags use_metadata_tags -metadata ICRD="${_datestr}" -c copy test.avi
       touch -r "${_file}" test.avi
       mv test.avi "${_file}"
     done
@@ -273,3 +282,37 @@ Using these tags:
     -N, --crtimes               preserve create times (newness)
     -u, --update                skip files that are newer on the receiver
     -r, --recursive             recurse into directories
+
+# Solve one-time stuff
+
+## One-time script
+
+find . -type d -iname "19*" | while read dir; do
+    touch -t "$dir[3,10]1200" $dir/*
+    exiftool '-time:all<$FileModifyDate' -wm w -P $dir/*jpg
+done
+
+
+find . -type d -iname "19*" | while read dir; do
+    echo $dir
+    cd $dir;
+    ~/Pictures/maintenance/publish_pics.sh --debug ~/stack/pics_lossy12
+    cd ..
+done
+
+## No DateTimeOriginal
+
+Check which photos have no DateTimeOriginal. Check dates of pics in folders 20051112 GAMMA is wrong
+    
+    exiftool -quiet -ignoreMinorErrors -if 'not $DateTimeOriginal' -printFormat '$filepath' -r *
+
+/Users/tim/Pictures/2003/20030803_tim_parachute_Texel
+/Users/tim/Pictures/2004/20040000_pictures_done
+/Users/tim/Pictures/2004/20040000_portfolio
+/Users/tim/Pictures/2004/20040708_joel_jasper_cor_bloomingdale
+/Users/tim/Pictures/2004/20040909_gamma_bowlen
+/Users/tim/Pictures/2005/20050315_antwerpen
+/Users/tim/Pictures/2005/20050701_tom_ton_den-haag
+/Users/tim/Pictures/2005/20050721--0806_Canada_Calgary_Joel/IMG_5915.JPG
+/Users/tim/Pictures/2005/20051112_GAMMA
+
