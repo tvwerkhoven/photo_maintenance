@@ -588,6 +588,8 @@ _convert_pics() {
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
         ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+        # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image
+        ${_PROG_EXIFTOOL} -makernotes:burstuuid= "${_EXPORT_DIR}/${_imgfileout}"
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_imgfile}" "${_mime}"
