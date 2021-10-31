@@ -567,10 +567,12 @@ _convert_pics() {
     # For HEIC, export to JPG instead until we have good heic support 
     # (i.e. -quality should not be 60 but 40 for equal quality, geotag not 
     # written properly yet)
-    if [[  "${_imgfile}" =~ .heic$ ]]; then
+    if [[  "${_imgfile}" =~ (.heic|.HEIC)$ ]]; then
       _imgfileout="${_imgfile%.*}.jpg"
+      _debug printf "forcing extension to jpg: ${_imgfile}"
     else
       _imgfileout="${_imgfile}"
+      _debug printf "taking native extension: ${_imgfile}"
     fi
     
     if [[ -f "${_EXPORT_DIR}/${_imgfileout}" ]]; then
