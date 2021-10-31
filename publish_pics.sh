@@ -181,6 +181,7 @@ _SOURCE_DIR="."
 _GPX_FMT_PATH="/tmp/gpx.fmt"
 _MOOV_META_PATH="/tmp/moov-meta-atom.bin"
 
+# _PROG_PUBLISHLIVEPIC=/usr/local/bin/publish_livepic.scpt
 _PROG_EXIFTOOL=/opt/local/bin/exiftool
 # http://mywiki.wooledge.org/BashFAQ/050#I.27m_constructing_a_command_based_on_information_that_is_only_known_at_run_time
 _PROG_EXIFTOOL_OPTS=(-quiet -quiet -ignoreMinorErrors)
@@ -572,6 +573,10 @@ _convert_pics() {
       _imgfileout="${_imgfile}"
     fi
     
+    if [[ -f "${_EXPORT_DIR}/${_imgfileout}" ]]; then
+      continue
+    fi
+
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
     if [[  "${_mime}" =~ ^image/ ]]; then
@@ -593,9 +598,9 @@ _convert_pics() {
     if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
       _touch_file_ref "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
     fi
- done || true)
- # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
- # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+  done || true)
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -634,45 +639,80 @@ _convert_vids() {
     if [[ "${_mime}" =~ ^video/ ]]; then
       _debug printf "%s Parsing video" "${_file}"
       
-      # We cannot easily process slo-mo videos with ffmpeg, so we skip these.
-      # We detect these by checking for framerate > 30. To ensure we can do
-      # integer comparison, we take the string before the decimal period
-      # for comparison (${var%\.*})
-      _framerate=$(${_PROG_EXIFTOOL} -printFormat '$videoframerate' "${_SOURCE_DIR}/${_file}")
-      # /Users/tim/Pictures/2017/20170720_timelapse_balkon_iphone/IMG_2564.MOV
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        # If filename ends in -x264_aac.mp4, we've already converted the 
-        # movie in the source directory. In that case, simply copy the file 
-        # as we probably won't save much space anymore
+        _outfile="${_file}-x264_aac.mp4"
+
+        # Skip if outfile exists
+        if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
+          continue
+        fi
+
+        _islivephoto=$(${_PROG_EXIFTOOL} -printFormat '$ContentIdentifier' "${_SOURCE_DIR}/${_file}")
+        _framerate=$(${_PROG_EXIFTOOL} -printFormat '$videoframerate' "${_SOURCE_DIR}/${_file}")
+        # /Users/tim/Pictures/2017/20170720_timelapse_balkon_iphone/IMG_2564.MOV
+
         if [[ "${_SOURCE_DIR}/${_file}" =~ -x264_aac.mp4$ ]]; then
+          # If filename ends in -x264_aac.mp4, we've already converted the 
+          # movie in the source directory (old WoW). In that case, simply copy the file 
+          # as we probably won't save much space anymore
           _debug printf "${_file} already converted, copying instead."
           _outfile="${_file}"
           cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
           continue
         elif [[ "${_framerate%\.*}" -gt 30 ]]; then
-          echo -n "Warning: cannot process slo-mo video. Please convert in QuickTime (Player) manually, OK?"
+          # We cannot easily process slo-mo videos with ffmpeg, so we skip these.
+          # We detect these by checking for framerate > 30. To ensure we can do
+          # integer comparison, we take the string before the decimal period
+          # for comparison (${var%\.*})
+          echo -n "Warning: cannot compress slo-mo video. Will copy directly. Alternatively convert in QuickTime (Player) manually."
           # read answer
-          continue
+          cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+        fi
+
+        if [[ -n "${_islivephoto}" ]]; then
+          # For live photo video, use QuickTime to convert down to 720p for marginal reduction
+          # See also
+          # - https://stackoverflow.com/questions/65376581/write-live-photo-metadata-to-video-using-ffmpeg
+          # - https://stackoverflow.com/questions/32508375/apple-live-photo-file-format/35286486#35286486
+          # - https://github.com/bennetimo/shrinkwrap
+          # - https://www.bensmithett.com/non-iphone-burst-photos-in-apples-photos-apps/
+          # - https://stackoverflow.com/questions/54248390/add-multiple-metadata-in-video-using-ffmpeg-command
+          # software solutions:
+          # - https://github.com/deneb0618/LivePhotoConverter
+          # - https://github.com/mzp/LoveLiver
+          _outfile="${_file}"
+          cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          # Alternative: convert using Quicktime (poor compression, only via applescript = difficult to manage)
+          # echo osascript "${_PROG_PUBLISHLIVEPIC}" "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          # osascript "${_PROG_PUBLISHLIVEPIC}" "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          # while [[ ! -s "${_EXPORT_DIR}/${_file}" ]]; do 
+          #   echo 'waiting for file'
+          #   sleep 0.5
+          # done
+          # echo 'file available:'
+          # ls -l "${_EXPORT_DIR}/${_file}"
         else
           # Convert to nice file format. Get the video metadata date 
           # from the modification time (stat) of the source file
           # Reduce output clutter: -hide_banner -nostats -loglevel error 
           # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
-          # We want ~1 MPixel max video size (1280x720) and no upscaling, 
-          # use -2 to ensure even width/height:
-          # iw*min(1,sqrt(1280*720/ih/iw)):-2
+          # We want
+          # - ~1 MPixel max video size (1280x720) --> use ratio of 1280*720/ih/iw
+          # - no upscaling --> use min(1, scale factor)
+          # - even height --> use -2 for height
+          # - even width --> iw * sqrt(1280*720/ih/iw) must be even --> round(iw * min(0.5,sqrt(1280*720/ih/iw)/2)*2):-2
           # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
           # https://trac.ffmpeg.org/wiki/Scaling
-          _outfile="${_file}-x264_aac.mp4"
-          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          # nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -i "${_SOURCE_DIR}/${_file}" -map 0 -copy_unknown -c copy -movflags use_metadata_tags -y "${_EXPORT_DIR}/${_outfile}"
           #nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264_videotoolbox -b:v 1000k -movflags use_metadata_tags -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
         fi
         _debug printf "${_file} Conversion done"
 
         _isiphone=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -printFormat '$make' "${_SOURCE_DIR}/${_file}")
-        if  [[ "${_isiphone:-"0"}" = 'Apple' ]]; then
-          # Fix GPS metadata by transplanting literal with https://www.bento4.com/
-          # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file
+        if  [[ "${_isiphone:-"0"}" = 'Apple' && -z "${_islivephoto}" ]]; then
+          # Fix GPS metadata by transplanting literal with https://www.bento4.com/ Skip for live photos/videos, where we want intact metadata
+          # @TODO Also geotag non-iphone videos like this by creating a dummy moov/meta-file and then inserting it in the output video file --> done, see geotag_all()
           if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
             _debug printf "${_file} Fixing/transplanting iOS geotag"
             ${_PROG_MP4EXTRACT} moov/meta "${_SOURCE_DIR}/${_file}" "${_MOOV_META_PATH}"
@@ -685,17 +725,17 @@ _convert_vids() {
       _debug printf "%s Unsupported mime-type: %s" "${_file}" "${_mime}"
       continue
     fi
-  # Always set newly created file datetime to original datetime
-  if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-    _debug printf "${_file} Setting timestamp"
-    _touch_file_ref "${_SOURCE_DIR}/${_file:-0}" "${_EXPORT_DIR}/${_outfile:-0}"
-    # For videos created with ffmpeg, also set metadata dates from the filemodifydate, as ffmpeg does not transfer metadata dates correctly
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" '-time:all<$FileModifyDate' -overwrite_original -wm w -P "${_EXPORT_DIR}/${_outfile:-0}"
-    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
-  fi
- done || true)
- # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
- # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+    # Always set newly created file datetime to original datetime
+    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+      _debug printf "${_file} Setting timestamp"
+      _touch_file_ref "${_SOURCE_DIR}/${_file:-0}" "${_EXPORT_DIR}/${_outfile:-0}"
+      # For videos created with ffmpeg, also set metadata dates from the filemodifydate, as ffmpeg does not transfer metadata dates correctly
+      ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" '-time:all<$FileModifyDate' -overwrite_original -wm w -P "${_EXPORT_DIR}/${_outfile:-0}"
+      # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
+    fi
+  done || true)
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
   shopt -u nocaseglob
   shopt -u nullglob
