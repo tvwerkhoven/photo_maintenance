@@ -534,6 +534,8 @@ _prep_output() {
 }
 
 _convert_pics() {
+  # Convert PNG, JPG, HEIC images with Rating tag set. Also monitor XMP files in case
+  # we have sidecars (e.g. for iPhone HEIC images tagged with Adobe Bridge).
   if [[ "${_CONV_PICS:-"0"}" -eq 0 ]]; then
     return
   fi
