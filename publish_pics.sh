@@ -491,7 +491,7 @@ HEREDOC
     fi      
     # Use IFS temporarily to split string. Only works if split char is 1 character
     # https://stackoverflow.com/questions/10586153/split-string-into-an-array-in-bash
-    IFS=','; read -ra _geotag_dec_arr <<< "$_geotag_dec"; unset IFS
+    IFS=',' read -ra _geotag_dec_arr <<< "$_geotag_dec"
     
     # Geo latitude should be 8 chars long: sign, two digits (0-90), comma, four digits
     # Geo longitude should be 9 chars long: sign, three digits (0-180), comma, four digits
