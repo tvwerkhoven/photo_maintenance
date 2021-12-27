@@ -556,7 +556,10 @@ _convert_pics() {
   (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
 
-    # If we have a sidecar file, find matching image file.
+    # If we have a sidecar file, find matching image file. This might cause 
+    # an image to be processed twice, once if sidecar is found, second
+    # time for image itself. This is OK because we don't know which rated
+    # file Exiftool will find.
     if [[  "${_file}" =~ .xmp$ ]]; then
       local _imgfileext=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -p '$SidecarForExtension' "${_file}")
       _imgfile="${_file%.*}.${_imgfileext}"
