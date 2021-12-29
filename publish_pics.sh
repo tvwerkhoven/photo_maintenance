@@ -131,7 +131,7 @@ can subsequently be copied to iPhone so one can store more pics on a phone
 
 Usage:
   ${_ME} [--options] <export_root>
-  ${_ME} -h | --help --debug --no-vids --no-pics --dry-run -s | --sourcedir
+  ${_ME} -h | --help --debug --no-vids --no-pics --use-heic --dry-run -s | --sourcedir
 
 Options:
   -h --help  Display this help information.
@@ -139,6 +139,7 @@ Options:
   --dry-run  Only check which files would be copied, do not convert/copy.
   --no-vids  Do not process videos
   --no-pics  Do not process pictures
+  --use-heic Use HEIC/HEIF image compression instead of JPG
   -s --sourcedir Directory to read from, defaults to current dir.
   <export_root> Directory to create output directory and files in.
 HEREDOC
@@ -173,6 +174,7 @@ _PRINT_HELP=0
 _USE_DEBUG=0
 _CONV_PICS=1
 _CONV_VIDS=1
+_USE_HEIC=0
 _DRY_RUN=0
 # Initialize additional expected option variables.
 _EXPORT_ROOT=
@@ -240,6 +242,9 @@ do
       ;;
     --no-pics)
       _CONV_PICS=0
+      ;;
+    --use-heic)
+      _USE_HEIC=1
       ;;
     -s)
       _require_argument "${__option}" "${__maybe_param}"
@@ -569,16 +574,23 @@ _convert_pics() {
       _imgfile="${_file}"
     fi
 
-    # For HEIC, export to JPG instead until we have good heic support 
-    # (i.e. -quality should not be 60 but 40 for equal quality, geotag not 
-    # written properly yet)
-    if [[  "${_imgfile}" =~ (.heic|.HEIC)$ ]]; then
-      _imgfileout="${_imgfile%.*}.jpg"
+    # # For HEIC, export to JPG instead until we have good heic support 
+    # # (i.e. -quality should not be 60 but 40 for equal quality, geotag not 
+    # # written properly yet)
+    # if [[  "${_imgfile}" =~ (.heic|.HEIC)$ ]]; then
+    #   _imgfileout="${_imgfile%.*}.jpg"
+    # else
+    #   _imgfileout="${_imgfile}"
+    # fi
+    if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
+      _imgfileout="${_imgfile%.*}.heic"
     else
-      _imgfileout="${_imgfile}"
+      _imgfileout="${_imgfile%.*}.jpg"
     fi
     
+    # Skip conversion if output file already exists
     if [[ -f "${_EXPORT_DIR}/${_imgfileout}" ]]; then
+      _debug printf "%s Skipping previously converted image" "${_imgfileout}"
       continue
     fi
 
@@ -592,9 +604,14 @@ _convert_pics() {
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
-        ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
-        # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image
-        ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
+        # Use either HEIC or JPG output formats, with different quality factors
+        if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
+          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+        else
+          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+        fi
+        # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
+        # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_imgfile}" "${_mime}"
