@@ -626,6 +626,15 @@ _convert_pics() {
   # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
   # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
 
+  # Post-process: copy EXIF tags from source files to destination files. Since the output file can have 
+  # a different extension (converting from JPG to HEIC or vice versa), we need two -tagsfromfile commands
+  # on the same output data. Because of this we issue a separate tag delete command (-all:all= ) on all files
+  # first. If we would do it in each -tagsfromfile copy command, the output files with mismatching source
+  # extension would have all their tags deleted.
+  exiftool -q -m -all:all= -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --MakerNotes --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --MakerNotes --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+
   shopt -u nocaseglob
   shopt -u nullglob
 }
