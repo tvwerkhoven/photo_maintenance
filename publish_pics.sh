@@ -131,7 +131,7 @@ can subsequently be copied to iPhone so one can store more pics on a phone
 
 Usage:
   ${_ME} [--options] <export_root>
-  ${_ME} -h | --help --debug --no-vids --no-pics --use-heic --dry-run -s | --sourcedir
+  ${_ME} -h | --help --debug --no-vids --no-pics --use-heic --use-hevc --dry-run -s | --sourcedir
 
 Options:
   -h --help  Display this help information.
@@ -140,6 +140,7 @@ Options:
   --no-vids  Do not process videos
   --no-pics  Do not process pictures
   --use-heic Use HEIC/HEIF image compression instead of JPG
+  --use-hevc Use HEVC/x265 video compression instead of x264
   -s --sourcedir Directory to read from, defaults to current dir.
   <export_root> Directory to create output directory and files in.
 HEREDOC
@@ -175,6 +176,7 @@ _USE_DEBUG=0
 _CONV_PICS=1
 _CONV_VIDS=1
 _USE_HEIC=0
+_USE_HEVC=0
 _DRY_RUN=0
 # Initialize additional expected option variables.
 _EXPORT_ROOT=
@@ -245,6 +247,9 @@ do
       ;;
     --use-heic)
       _USE_HEIC=1
+      ;;
+    --use-hevc)
+      _USE_HEVC=1
       ;;
     -s)
       _require_argument "${__option}" "${__maybe_param}"
@@ -631,9 +636,10 @@ _convert_pics() {
   # on the same output data. Because of this we issue a separate tag delete command (-all:all= ) on all files
   # first. If we would do it in each -tagsfromfile copy command, the output files with mismatching source
   # extension would have all their tags deleted.
+  # Optionally remove MakerNotes (-exif:all --MakerNotes), but this might break Live Photos which relies on MediaGroupUUID
   exiftool -q -m -all:all= -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --MakerNotes --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --MakerNotes --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -673,7 +679,11 @@ _convert_vids() {
       _debug printf "%s Parsing video" "${_file}"
       
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        _outfile="${_file}-x264_aac.mp4"
+        if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
+          _outfile="${_file}-x265_aac.mp4"
+        else
+          _outfile="${_file}-x264_aac.mp4"
+        fi
 
         # Skip if outfile exists
         if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
@@ -713,6 +723,7 @@ _convert_vids() {
           # software solutions:
           # - https://github.com/deneb0618/LivePhotoConverter
           # - https://github.com/mzp/LoveLiver
+          echo -n "Warning: cannot compress live photo video. Will copy directly. Alternatively convert in QuickTime (Player) manually."
           _outfile="${_file}"
           cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
           # Alternative: convert using Quicktime (poor compression, only via applescript = difficult to manage)
@@ -736,9 +747,13 @@ _convert_vids() {
           # - even width --> iw * sqrt(1280*720/ih/iw) must be even --> round(iw * min(0.5,sqrt(1280*720/ih/iw)/2)*2):-2
           # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
           # https://trac.ffmpeg.org/wiki/Scaling
-          nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
-          # nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -i "${_SOURCE_DIR}/${_file}" -map 0 -copy_unknown -c copy -movflags use_metadata_tags -y "${_EXPORT_DIR}/${_outfile}"
-          #nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264_videotoolbox -b:v 1000k -movflags use_metadata_tags -vf "scale='iw*min(1,sqrt(1280*720/ih/iw)):-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
+            # HEVC target 2MPixel, -tag:v hvc1 for Apple, rest same as x264
+
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset slower -movflags use_metadata_tags -crf 32 -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          else
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+          fi
         fi
         _debug printf "${_file} Conversion done"
 
