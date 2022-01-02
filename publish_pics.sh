@@ -606,9 +606,9 @@ _convert_pics() {
         # https://developers.google.com/speed/docs/insights/OptimizeImages
         # Use either HEIC or JPG output formats, with different quality factors
         if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
-          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 -auto-orient "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         else
-          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -auto-orient -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         fi
         # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
         # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
