@@ -637,9 +637,9 @@ _convert_pics() {
   # first. If we would do it in each -tagsfromfile copy command, the output files with mismatching source
   # extension would have all their tags deleted.
   # Optionally remove MakerNotes (-exif:all --MakerNotes), but this might break Live Photos which relies on MediaGroupUUID
-  exiftool -q -m -all:all= -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -wm w -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   shopt -u nocaseglob
   shopt -u nullglob
