@@ -611,9 +611,9 @@ _convert_pics() {
         # https://developers.google.com/speed/docs/insights/OptimizeImages
         # Use either HEIC or JPG output formats, with different quality factors
         if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
-          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 -auto-orient "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         else
-          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -auto-orient -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         fi
         # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
         # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
@@ -801,13 +801,14 @@ _tag_pics() {
   shopt -s nullglob
   local _albumdir_tag
   local _albumdir_tag_nodate
-  local _exiftags
+  local _iptckeywords
+  local _xmpkeywords
 
 
   # All tags in lower case to reduce number of unique keywords
   _albumdir_tag=$(basename "${_EXPORT_DIR}" | tr '[:upper:]' '[:lower:]')
-  local -a _exiftags=("-IPTC:Keywords+=${_albumdir_tag}")
-  local -a _pngtags=("-XMP:Subject+=${_albumdir_tag}")
+  # local -a _iptckeywords=("-IPTC:Keywords+=${_albumdir_tag}")
+  local -a _xmpkeywords=("-XMP:Subject+=${_albumdir_tag}")
   
   # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
   _albumdir_tag_nodate=${_albumdir_tag#* }
@@ -817,22 +818,18 @@ _tag_pics() {
   read -ra _albumdir_tag_nodate_arr <<< "${_albumdir_tag_nodate}"
   for _keyword in "${_albumdir_tag_nodate_arr[@]}"; do
       if [ "${#_keyword}"  -gt 2 ]; then
-          _exiftags+=("-IPTC:Keywords+=${_keyword}")
-          _pngtags+=("-XMP:Subject+=${_keyword}")
+          # _iptckeywords+=("-IPTC:Keywords+=${_keyword}")
+          _xmpkeywords+=("-XMP:Subject+=${_keyword}")
       fi
   done
-  # Add png tags and exif tags separately
+  
+  # Tag files
   # See https://stackoverflow.com/questions/19154596/exiftool-to-create-osx-visible-xmp-metadata-in-png-images
-  # 
-  if [[ -n "$(echo "${_EXPORT_DIR}"/*png)" ]]; then
-    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_pngtags[@]}" -P "${_EXPORT_DIR}"/*png
-    fi
-  fi
-  if [[ -n "$(echo "${_EXPORT_DIR}"/*jpg,heic)" ]]; then
-    if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-      ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_exiftags[@]}" -P "${_EXPORT_DIR}"/*jpg
-    fi
+  # Also see https://www.lightroomqueen.com/community/threads/keywords-with-heic-vs-others.42495/#post-1281827
+  if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
+    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext HEIC -P "${_EXPORT_DIR}"
+    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_iptckeywords[@]}" -ext JPG -P "${_EXPORT_DIR}"
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
   fi
 
   shopt -u nocaseglob
