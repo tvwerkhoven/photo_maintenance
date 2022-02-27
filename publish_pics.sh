@@ -707,9 +707,10 @@ _convert_vids() {
           # We detect these by checking for framerate > 30. To ensure we can do
           # integer comparison, we take the string before the decimal period
           # for comparison (${var%\.*})
-          echo -n "Warning: cannot compress slo-mo video. Will copy directly. Alternatively convert in QuickTime (Player) manually."
+          echo -n "Warning: cannot compress slo-mo video (${_file}). Will copy directly. Alternatively convert in QuickTime (Player) manually."
           # read answer
           cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
+          continue
         fi
 
         if [[ -n "${_islivephoto}" ]]; then
