@@ -66,7 +66,7 @@ _debug() {
     # Prefix debug message with "bug (U+1F41B)"
     printf "🐛  %s " "${__DEBUG_COUNTER}"
     "${@}"
-    printf "――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――\\n"
+    # printf "――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――\\n"
   fi
 }
 # debug()
@@ -637,6 +637,8 @@ _convert_pics() {
   # first. If we would do it in each -tagsfromfile copy command, the output files with mismatching source
   # extension would have all their tags deleted.
   # Optionally remove MakerNotes (-exif:all --MakerNotes), but this might break Live Photos which relies on MediaGroupUUID
+  # @TODO check if source files or target files exist to prevent 'Warning: Error opening file - ./IMG_9371.heic'
+  _debug printf "'Error opening file' warnings might follow, can be ignored"
   exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
   exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
   exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
