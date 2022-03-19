@@ -612,10 +612,14 @@ _convert_pics() {
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
         # Use either HEIC or JPG output formats, with different quality factors
+        # Use \> to only resize larger images than desired size 
+        # http://www.imagemagick.org/Usage/resize/#shrink
+        # https://stackoverflow.com/a/6387086
+        # We add -auto-orient because imagemagick does not parse orientation for jpeg --> heic conversion properly
         if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
-          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 2560x2560\> -quality 40 -auto-orient "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         else
-          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
+          ${_PROG_CONVERT} -geometry 1920x1920\> -quality 60 -auto-orient -sampling-factor 4:2:0 "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
         fi
         # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
         # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
@@ -641,9 +645,18 @@ _convert_pics() {
   # Optionally remove MakerNotes (-exif:all --MakerNotes), but this might break Live Photos which relies on MediaGroupUUID
   # @TODO check if source files or target files exist to prevent 'Warning: Error opening file - ./IMG_9371.heic'
   _debug printf "'Error opening file' warnings might follow, can be ignored"
-  exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # Keep unless (delete only specific groups) -- messes up rotation for jpg --> heic
+  # ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+
+  # Keep unless (copy all tags, delete only specific groups) -- messes up rotation
+  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  
+  # Delete unless (keep only specific groups) -- too aggressive, sometimes also deletes rotation data
+  # exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   shopt -u nocaseglob
   shopt -u nullglob
