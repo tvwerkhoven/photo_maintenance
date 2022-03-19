@@ -67,6 +67,7 @@ _debug() {
     printf "🐛  %s " "${__DEBUG_COUNTER}"
     "${@}"
     # printf "――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――\\n"
+    printf "\\n"
   fi
 }
 # debug()
@@ -203,6 +204,9 @@ _PROG_DATE=/opt/local/bin/gdate
 _PROG_MP4EXTRACT=/usr/local/bin/mp4extract
 _PROG_MP4EDIT=/usr/local/bin/mp4edit
 
+# Track stuff across functions
+_NUMMATCHES=0
+
 # _require_argument()
 #
 # Usage:
@@ -330,10 +334,11 @@ _check_prereq() {
   shopt -s nocaseglob
   shopt -s nullglob
 
-  local _havematches
-  _havematches=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} || true)
-  if [[ -z "${_havematches}" ]]; then
-    _die printf "No matches for this directory\n"
+  # Count numnber of lines, ensure we don't count empty lines
+  # https://stackoverflow.com/questions/6314679/in-bash-how-do-i-count-the-number-of-lines-in-a-variable
+  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} | grep -c '^' || true)
+  if [[ "${_NUMMATCHES}" -eq 0 ]]; then
+    _die printf "No matches for this directory\\n"
   fi
   shopt -u nocaseglob
   shopt -u nullglob
@@ -602,10 +607,7 @@ _convert_pics() {
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
     if [[  "${_mime}" =~ ^image/ ]]; then
-      _debug printf "%s Parsing image" "${_imgfile}"
-      # Use \> to only resize larger images than desired size 
-      # http://www.imagemagick.org/Usage/resize/#shrink
-      # https://stackoverflow.com/a/6387086
+      _debug printf "%s Parsing image (total ${_NUMMATCHES})" "${_imgfile}"
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
@@ -678,7 +680,7 @@ _convert_vids() {
     # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
-      _debug printf "%s Parsing video" "${_file}"
+      _debug printf "%s Parsing video" "${_file}" "(total" "${_NUMMATCHES}" ")"
       
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
