@@ -649,9 +649,9 @@ _convert_pics() {
   # ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   # Keep unless (copy all tags, delete only specific groups) -- messes up rotation
-  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
   
   # Delete unless (keep only specific groups) -- too aggressive, sometimes also deletes rotation data
   # exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
