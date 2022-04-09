@@ -285,6 +285,17 @@ Using these tags:
 
 # Solve one-time stuff
 
+## Find matching exported directory
+
+
+
+    find . -type d -not -path "." | cut -c 3- | tr "_" " " | while read DIR; do grep -c "$DIR" ~/Pictures/index-losssy-20220325.txt || echo NOT FOUND $DIR; done
+
+Tips from
+* https://stackoverflow.com/questions/4210042/how-to-exclude-a-directory-in-find-command
+* https://unix.stackexchange.com/questions/516161/printing-a-string-when-grep-does-not-get-a-match
+
+
 ## One-time script
 
 find . -type d -iname "19*" | while read dir; do
