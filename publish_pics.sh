@@ -606,8 +606,10 @@ _convert_pics() {
 
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
+    local _numfile=0
     if [[  "${_mime}" =~ ^image/ ]]; then
-      _debug printf "%s Parsing image (total ${_NUMMATCHES})" "${_imgfile}"
+      _numfile=$(( ${_numfile} + 1 ))
+      _debug printf "%s Parsing image (${_numfile}/${_NUMMATCHES})" "${_imgfile}"
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
         # https://developers.google.com/speed/docs/insights/OptimizeImages
@@ -693,7 +695,8 @@ _convert_vids() {
     # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
-      _debug printf "%s Parsing video" "${_file}" "(total" "${_NUMMATCHES}" ")"
+      _numfile=$(( ${_numfile} + 1 ))
+      _debug printf "%s Parsing video (${_numfile}/${_NUMMATCHES})" "${_imgfile}"
       
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
