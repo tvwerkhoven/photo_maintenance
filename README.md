@@ -114,7 +114,22 @@ For non-rated files, reduce to <=9M @ 75 or 80 quality with acceptable quality l
 
     for img in $(exiftool -m -q -q -if 'not $rating' -p '$filename' *{JPG,jpg}); do echo $img; convert -resize 3000x3000 -quality 80 $img temp.jpg && mv temp.jpg $img; done
 
+
+## Find non-keyworded images
+
+Find images where somehow we didn't set image keywords (-subject)
+
+exiftool -keywords -subject /Users/tim/Nextcloud/pics_lossy12/20110703--18\ vacation\ georgia/IMG_0111_eos.JPG
+exiftool -keywords -subject /Users/tim/Nextcloud/pics_lossy12/20211127\ verjaardag\ cok\ jannie\ wormshoef/IMG_7506.JPG
+exiftool -keywords -subject /Users/tim/Nextcloud/pics_lossy12/20220114\ alexandra\ hofje\ leuning\ stoeltje\ muts\ raam/IMG_1662.heic
+
+for dir in 202203*; do
+    TAGGED=$(exiftool -q -if 'not $keywords and not $subject' -ext PNG -ext JPG -ext JPEG -ext HEIC "${dir}"/* -p '$directory/$filename')
+    echo "$(ls $dir | wc -l)\t$(echo $TAGGED | wc -l)\t$dir"
+done
+
 ## Find non-geotags
+
 Recursively find JPEG-files that have no geotag:
 
     find . -iregex ".*\.\(jp.*g\)" -exec sh -c 'f="{}"; test -z $(jhead "$f" | grep GPS | head -n 1 | cut -f1 -d" ") && echo $f' \;
@@ -285,11 +300,26 @@ Using these tags:
 
 # Solve one-time stuff
 
+## Fix timestamps on wrongly timestamped videos
+
+At least 2022 and 2021 videos are affected
+
+find . -type f -iname "*mp4" | grep "^./2022" | while read vidfile; do
+    echo $vidfile;
+    exiftool -time:all $vidfile
+done
+
+SRCFILE=/Users/tim/Pictures/2022/dir/IMG_3385.MOV
+DSTFILE=IMG_3385.MOV-x264_aac.mp4
+
+touch -r "${SRCFILE}" "${DSTFILE}"
+exiftool -tagsfromfile "${SRCFILE}" '-time:all' -overwrite_original -wm w -P "${DSTFILE}"
+
 ## Find matching exported directory
 
+    find . > ~/Pictures/index-losssy-20220410.txt
 
-
-    find . -type d -not -path "." | cut -c 3- | tr "_" " " | while read DIR; do grep -c "$DIR" ~/Pictures/index-losssy-20220325.txt || echo NOT FOUND $DIR; done
+    find . -type d -not -path "." | cut -c 3- | tr "_" " " | while read DIR; do grep -q "$DIR" ~/Pictures/index-losssy-20220410.txt > /dev/null || echo NOT FOUND $DIR; done
 
 Tips from
 * https://stackoverflow.com/questions/4210042/how-to-exclude-a-directory-in-find-command
@@ -327,3 +357,13 @@ Check which photos have no DateTimeOriginal. Check dates of pics in folders 2005
 /Users/tim/Pictures/2005/20050721--0806_Canada_Calgary_Joel/IMG_5915.JPG
 /Users/tim/Pictures/2005/20051112_GAMMA
 
+## Scratch
+
+
+for i in *gif; do
+    timestamp=$(echo $i | cut -c7-22 | tr -d "-" | tr -d "_");
+    echo $timestamp;
+    touch -t $timestamp $i
+done
+
+exiftool '-time:all<$FileModifyDate' -overwrite_original -wm w -P *gif
