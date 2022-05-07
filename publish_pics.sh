@@ -180,6 +180,7 @@ _USE_HEIC=0
 _USE_HEVC=0
 _DRY_RUN=0
 # Initialize additional expected option variables.
+_EXPORT_PREFIX="PUB_"
 _EXPORT_ROOT=
 _SOURCE_DIR="."
 
@@ -594,9 +595,9 @@ _convert_pics() {
     #   _imgfileout="${_imgfile}"
     # fi
     if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
-      _imgfileout="${_imgfile%.*}.heic"
+      _imgfileout="${_EXPORT_PREFIX}${_imgfile%.*}.heic"
     else
-      _imgfileout="${_imgfile%.*}.jpg"
+      _imgfileout="${_EXPORT_PREFIX}${_imgfile%.*}.jpg"
     fi
     
     # Skip conversion if output file already exists
@@ -701,9 +702,9 @@ _convert_vids() {
       
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
-          _outfile="${_file}-x265_aac.mp4"
+          _outfile="${_EXPORT_PREFIX}${_file}-x265_aac.mp4"
         else
-          _outfile="${_file}-x264_aac.mp4"
+          _outfile="${_EXPORT_PREFIX}${_file}-x264_aac.mp4"
         fi
 
         # Skip if outfile exists
