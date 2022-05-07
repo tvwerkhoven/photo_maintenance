@@ -559,6 +559,7 @@ _convert_pics() {
   local _mime
   local _imgfile
   local _imgfileout
+  local _numfile=0
 
   shopt -s nocaseglob
   shopt -s nullglob
@@ -606,7 +607,6 @@ _convert_pics() {
 
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
-    local _numfile=0
     if [[  "${_mime}" =~ ^image/ ]]; then
       _numfile=$(( ${_numfile} + 1 ))
       _debug printf "%s Parsing image (${_numfile}/${_NUMMATCHES})" "${_imgfile}"
@@ -675,6 +675,7 @@ _convert_vids() {
   local _mime
   local _framerate
   local _isiphone
+  local _numfile=0
 
   shopt -s nocaseglob
   shopt -s nullglob
