@@ -762,7 +762,7 @@ _convert_vids() {
           # Convert to nice file format. Get the video metadata date 
           # from the modification time (stat) of the source file
           # Reduce output clutter: -hide_banner -nostats -loglevel error 
-          # Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
+          # UPDATE 20220501 Don't copy anymore - use exiftool instead, works better? -- Copy all metadata: -movflags use_metadata_tags -- https://superuser.com/questions/1208273/add-new-and-non-defined-metadata-to-a-mp4-file -- https://video.stackexchange.com/questions/23741/how-to-prevent-ffmpeg-from-dropping-metadata
           # We want
           # - ~1 MPixel max video size (1280x720) --> use ratio of 1280*720/ih/iw
           # - no upscaling --> use min(1, scale factor)
@@ -770,12 +770,13 @@ _convert_vids() {
           # - even width --> iw * sqrt(1280*720/ih/iw) must be even --> round(iw * min(0.5,sqrt(1280*720/ih/iw)/2)*2):-2
           # https://unix.stackexchange.com/questions/190431/convert-a-video-to-a-fixed-screen-size-by-cropping-and-resizing
           # https://trac.ffmpeg.org/wiki/Scaling
+
           if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
             # HEVC target 2MPixel, -tag:v hvc1 for Apple, rest same as x264
 
             nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset slower -movflags use_metadata_tags -crf 32 -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           else
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx264 -profile:v high -preset slower -crf 26 -movflags +faststart -vf "format=yuv420p,scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2':-2:flags=lanczos" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           fi
         fi
         _debug printf "${_file} Conversion done"
