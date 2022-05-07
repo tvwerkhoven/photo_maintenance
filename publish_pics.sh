@@ -698,8 +698,8 @@ _convert_vids() {
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
       _numfile=$(( ${_numfile} + 1 ))
-      _debug printf "%s Parsing video (${_numfile}/${_NUMMATCHES})" "${_imgfile}"
-      
+      _debug printf "%s Parsing video (${_numfile}/${_NUMMATCHES})" "${_file}"
+
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
           _outfile="${_EXPORT_PREFIX}${_file}-x265_aac.mp4"
