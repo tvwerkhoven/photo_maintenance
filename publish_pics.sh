@@ -663,13 +663,13 @@ _convert_pics() {
   # extension would have all their tags deleted.
   # Optionally remove MakerNotes (-exif:all --MakerNotes), but this might break Live Photos which relies on MediaGroupUUID
   # @TODO check if source files or target files exist to prevent 'Warning: Error opening file - ./IMG_9371.heic'
-  _debug printf "'Error opening file' warnings might follow, can be ignored"
+  # _debug printf "'Error opening file' warnings might follow, can be ignored"
   # Keep unless (delete only specific groups) -- messes up rotation for jpg --> heic
   # ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   # Keep unless (copy all tags, delete only specific groups) -- messes up rotation
-  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
-  ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
   ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
   
   # Delete unless (keep only specific groups) -- too aggressive, sometimes also deletes rotation data
