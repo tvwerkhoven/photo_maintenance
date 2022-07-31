@@ -368,7 +368,7 @@ exiftool -tagsfromfile "${SRCFILE}" '-time:all' -overwrite_original -wm w -P "${
 
     find . > ~/Pictures/index-losssy-20220410.txt
 
-    find . -type d -not -path "." | cut -c 3- | tr "_" " " | while read DIR; do grep -q "$DIR" ~/Pictures/index-losssy-20220410.txt > /dev/null || echo NOT FOUND $DIR; done
+    find . -type d -not -path "." | sort -n | while read DIR; do SDIR=$(echo $DIR | cut -c 3- | tr "_" " "); grep -q "$SDIR" ~/Pictures/index-losssy-20220506.txt > /dev/null || echo NOT FOUND $SDIR -- $(find "$DIR" -type f | \grep -o '[^\.]*$' | sort | uniq -c | xargs); done
 
 Tips from
 * https://stackoverflow.com/questions/4210042/how-to-exclude-a-directory-in-find-command
