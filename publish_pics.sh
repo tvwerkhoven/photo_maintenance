@@ -737,9 +737,9 @@ _convert_vids() {
           _outfile="${_file}"
           cp -p "${_SOURCE_DIR}/${_file}" "${_EXPORT_DIR}/"
           continue
-        elif [[ "${_framerate%\.*}" -gt 30 ]]; then
+        elif [[ "${_framerate%.*}" -gt 60 ]]; then
           # We cannot easily process slo-mo videos with ffmpeg, so we skip these.
-          # We detect these by checking for framerate > 30. To ensure we can do
+          # We detect these by checking for framerate > 60. To ensure we can do
           # integer comparison, we take the string before the decimal period
           # for comparison (${var%\.*})
           echo -n "Warning: cannot compress slo-mo video (${_file}). Will copy directly. Alternatively convert in QuickTime (Player) manually."
