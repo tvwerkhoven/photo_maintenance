@@ -95,6 +95,55 @@ Not working:
 - Add keywords via Exiftool, with IPTC:Keywords, then Rollit
 - Add keywords via Exiftool, with quicktime:keywords, then Rollit
 
+# Video sync via 'Sync photos'
+
+## Problem
+
+Some videos, including “IMG_3904.MOV.v5.main_4.0_faststart_aac.mp4”, were not copied to the iPhone “iPhone SE Neptune” Some videos because they cannot be played on this iPhone.
+
+Problem seemed to be -movflags use_metadata_tags
+
+## Testing
+
+_file=IMG_3904.MOV
+
+
+### Does not work
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset slower -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_file}.original.mp4"
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v high -vf "format=yuv420p,scale=-2:720:flags=lanczos" -c:a aac -preset faster -movflags +faststart -metadata com.apple.quicktime.keywords="tobiah, 4bf44caeff42"  "${_file}.v11.simple_720p_keywords2.mp4"
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v high -level 4.0 -pix_fmt yuv420p -c:v h264 -preset faster -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_file}.v1.original.mp4"
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:v h264 -preset faster -movflags use_metadata_tags -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_file}.v2.baseline_3.0.mp4"
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:v h264 -preset faster -movflags use_metadata_tags -movflags +faststart -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_file}.v3.baseline_3.0_faststart.mp4"
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:v h264 -preset faster -movflags use_metadata_tags -movflags +faststart -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a aac -vbr 3 -threads 0 -y "${_file}.v4.baseline_3.0_faststart_aac.mp4"
+
+    nice -n 15 ffmpeg -hide_banner -nostdin -nostats -loglevel error -i "${_file}" -profile:v main -level 4.0 -pix_fmt yuv420p -c:v h264 -preset faster -movflags use_metadata_tags -movflags +faststart -crf 26 -vf "scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2:-2" -c:a aac -vbr 3 -threads 0 -y "${_file}.v5.main_4.0_faststart_aac.mp4"
+
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v high -vf "format=yuv420p" -vf "scale=-2:720:flags=lanczos" -c:a aac -movflags +faststart -movflags use_metadata_tags "${_file}.v10.simple_720p_metadatatags.mp4"
+
+### Does work
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v main -vf "format=yuv420p" -c:a aac -movflags +faststart "${_file}.v6.simple.mp4"
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v main -vf "format=yuv420p" -vf "scale=-2:720:flags=lanczos" -c:a aac -movflags +faststart "${_file}.v7.simple_720p.mp4"
+
+    exiftool -TagsFromFile IMG_3904.MOV -All:All  IMG_3904.MOV.v8.simple_720p_keywords.mp4
+
+Not sure if keywords are working (no, keywords don't work):
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v main -vf "format=yuv420p" -vf "scale=-2:720:flags=lanczos" -c:a aac -preset faster -movflags +faststart -metadata com.apple.quicktime.keywords="tobiah, 4bf44caeff42"  "${_file}.v9.simple_720p_keywords2.mp4"
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v high -vf "format=yuv420p,scale=-2:720:flags=lanczos" -c:a aac -preset faster -movflags +faststart -metadata com.apple.quicktime.keywords="tobiah, 4bf44caeff42"  "${_file}.v11.simple_720p_keywords2.mp4"
+
+
+    ffmpeg -i "${_file}" -c:v libx264 -profile:v high -vf "format=yuv420p,scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2':-2:flags=lanczos" -c:a libfdk_aac -vbr 3 -preset faster -movflags +faststart "${_file}.v12.simple_720p.mp4"
+
 # One-liners
 
 ## Preparing for marktplaats
