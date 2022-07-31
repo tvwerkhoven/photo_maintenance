@@ -180,7 +180,7 @@ _USE_HEIC=0
 _USE_HEVC=0
 _DRY_RUN=0
 # Initialize additional expected option variables.
-_EXPORT_PREFIX="PUB_"
+_EXPORT_PREFIX="PUB" # prefix max 3 characters
 _EXPORT_ROOT=
 _SOURCE_DIR="."
 
@@ -586,19 +586,33 @@ _convert_pics() {
       _imgfile="${_file}"
     fi
 
-    # # For HEIC, export to JPG instead until we have good heic support 
-    # # (i.e. -quality should not be 60 but 40 for equal quality, geotag not 
-    # # written properly yet)
-    # if [[  "${_imgfile}" =~ (.heic|.HEIC)$ ]]; then
-    #   _imgfileout="${_imgfile%.*}.jpg"
-    # else
-    #   _imgfileout="${_imgfile}"
-    # fi
+    # Set HEIC or JPG output format, add $PREFIX so we can recognized converted images.
+
+    # Also make output filename:
+    # - Add $PREFIX so we can recognized converted images, 
+    # - keep image ID (e.g. take the numerical part of the file, e.g. XXXX in IMG_XXXX.extension), 
+    # - if image ID is longer than 4 digits, add file ID ourselves, find ID that doesn't collide
+    # - add extra random char for more address space.
+
     if [[ "${_USE_HEIC:-"0"}" -eq 1 ]]; then
-      _imgfileout="${_EXPORT_PREFIX}${_imgfile%.*}.heic"
+      _imgfileout=${_EXPORT_PREFIX::3}${_imgfile%.*}".heic"
     else
-      _imgfileout="${_EXPORT_PREFIX}${_imgfile%.*}.jpg"
+      _imgfileout=${_EXPORT_PREFIX::3}${_imgfile%.*}".jpg"
     fi
+
+    # _imgfileout="${_EXPORT_PREFIX::3}${_rand}${_imgfileout:4}"
+    # "${_imgfile%.*}.heic"
+    # _imgfileout="${_imgfile%.*}.jpg"
+    # _imgfileout="${_EXPORT_PREFIX::3}${_rand}${_imgfileout:4}"
+    # _rand=$(LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 1)
+
+    # _imgfilebase=${_imgfile%%.*}
+    # _imgfileid=${_imgfilebase//[!0-9]/}
+
+    # if [[ ${#_imgfileid} -ne 4 ]]; then
+    #   _imgfileid=_numfile
+    #   _imgfileout=${_EXPORT_PREFIX::3}_${_imgfileid}${_imgfileoutext}
+    # fi
     
     # Skip conversion if output file already exists
     if [[ -f "${_EXPORT_DIR}/${_imgfileout}" ]]; then
@@ -626,6 +640,8 @@ _convert_pics() {
         fi
         # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
         # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
+
+        ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}/${_imgfile}" -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}/${_imgfileout}" || true
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_imgfile}" "${_mime}"
@@ -701,11 +717,8 @@ _convert_vids() {
       _debug printf "%s Parsing video (${_numfile}/${_NUMMATCHES})" "${_file}"
 
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
-          _outfile="${_EXPORT_PREFIX}${_file}-x265_aac.mp4"
-        else
-          _outfile="${_EXPORT_PREFIX}${_file}-x264_aac.mp4"
-        fi
+        # Change prefix of file so we can distinguish original images and converted images in our Camera Roll.
+        _outfile=${_EXPORT_PREFIX::3}${_file%.*}".mp4"
 
         # Skip if outfile exists
         if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
