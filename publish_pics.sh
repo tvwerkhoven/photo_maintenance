@@ -337,7 +337,7 @@ _check_prereq() {
 
   # Count numnber of lines, ensure we don't count empty lines
   # https://stackoverflow.com/questions/6314679/in-bash-how-do-i-count-the-number-of-lines-in-a-variable
-  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} | grep -c '^' || true)
+  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v,png,jpg,heic,xmp} | grep -c '^' || true)
   if [[ "${_NUMMATCHES}" -eq 0 ]]; then
     _die printf "No matches for this directory\\n"
   fi
@@ -367,7 +367,7 @@ _prep_input() {
     # For video, using Quicktime:CreationDate, as this is kept intact when 
     # e.g. trimming a file in QuickTime, whereas Quicktime:CreateDate is set 
     # to the digital creation date.
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreationDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreationDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
@@ -694,7 +694,7 @@ _convert_vids() {
   # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} || return
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 

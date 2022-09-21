@@ -366,9 +366,19 @@ exiftool -tagsfromfile "${SRCFILE}" '-time:all' -overwrite_original -wm w -P "${
 
 ## Find matching exported directory
 
-    find . > ~/Pictures/index-losssy-20220410.txt
+    
+    find ~/Pictures -type d > index-dirs-20220810.txt
+    find ~/Nextcloud/pics_lossy12 -type d > ~/Pictures/index-losssy-dirs-20220810.txt
 
-    find . -type d -not -path "." | sort -n | while read DIR; do SDIR=$(echo $DIR | cut -c 3- | tr "_" " "); grep -q "$SDIR" ~/Pictures/index-losssy-20220506.txt > /dev/null || echo NOT FOUND $SDIR -- $(find "$DIR" -type f | \grep -o '[^\.]*$' | sort | uniq -c | xargs); done
+    sort -nr index-dirs-20220810.txt | cut -c 27- | tr "_" " " | while read DIR; do grep 
+
+    head index-losssy-dirs-20220810.txt | cut -c 35-
+
+    # Per year
+    cd ~/Pictures/2022
+    find . -type d -not -path "." | sort -n | while read DIR; do SDIR=$(echo $DIR | cut -c 3- | tr "_" " "); grep -q "$SDIR" ~/Pictures/index-losssy-dirs-20220810.txt > /dev/null || echo NOT FOUND $SDIR -- $(find "$DIR" -type f | \grep -o '[^\.]*$' | sort | uniq -c | xargs); done
+
+    # Done 2019, 2018
 
 Tips from
 * https://stackoverflow.com/questions/4210042/how-to-exclude-a-directory-in-find-command
