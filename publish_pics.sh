@@ -574,6 +574,7 @@ _convert_pics() {
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
   (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
+    _numfile=$(( ${_numfile} + 1 ))
 
     # If we have a sidecar file, find matching image file. This might cause 
     # an image to be processed twice, once if sidecar is found, second
@@ -599,20 +600,6 @@ _convert_pics() {
     else
       _imgfileout=${_EXPORT_PREFIX::3}${_imgfile%.*}".jpg"
     fi
-
-    # _imgfileout="${_EXPORT_PREFIX::3}${_rand}${_imgfileout:4}"
-    # "${_imgfile%.*}.heic"
-    # _imgfileout="${_imgfile%.*}.jpg"
-    # _imgfileout="${_EXPORT_PREFIX::3}${_rand}${_imgfileout:4}"
-    # _rand=$(LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 1)
-
-    # _imgfilebase=${_imgfile%%.*}
-    # _imgfileid=${_imgfilebase//[!0-9]/}
-
-    # if [[ ${#_imgfileid} -ne 4 ]]; then
-    #   _imgfileid=_numfile
-    #   _imgfileout=${_EXPORT_PREFIX::3}_${_imgfileid}${_imgfileoutext}
-    # fi
     
     # Skip conversion if output file already exists
     if [[ -f "${_EXPORT_DIR}/${_imgfileout}" ]]; then
@@ -623,7 +610,6 @@ _convert_pics() {
     # # Use mime-type to distinguish between video and images
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_imgfile}")
     if [[  "${_mime}" =~ ^image/ ]]; then
-      _numfile=$(( ${_numfile} + 1 ))
       _debug printf "%s Parsing image (${_numfile}/${_NUMMATCHES})" "${_imgfile}"
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
         # https://stackoverflow.com/questions/7261855/recommendation-for-compressing-jpg-files-with-imagemagick#7262050
@@ -710,20 +696,23 @@ _convert_vids() {
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
   (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
     _debug printf "${_file}"
+    _numfile=$(( ${_numfile} + 1 ))
+
+    # Change prefix of file so we can distinguish original images and converted images in our Camera Roll.
+    _outfile=${_EXPORT_PREFIX::3}${_file%.*}".mp4"
+
+    # Skip if outfile exists
+    if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
+      _debug printf "%s Skipping previously converted video" "${_imgfileout}"
+      continue
+    fi
+
     # # Use mime-type to ensure we have a video file
     _mime=$(${_PROG_FILE} --brief --mime-type "${_SOURCE_DIR}/${_file}")
     if [[ "${_mime}" =~ ^video/ ]]; then
-      _numfile=$(( ${_numfile} + 1 ))
       _debug printf "%s Parsing video (${_numfile}/${_NUMMATCHES})" "${_file}"
 
       if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-        # Change prefix of file so we can distinguish original images and converted images in our Camera Roll.
-        _outfile=${_EXPORT_PREFIX::3}${_file%.*}".mp4"
-
-        # Skip if outfile exists
-        if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
-          continue
-        fi
 
         _islivephoto=$(${_PROG_EXIFTOOL} -printFormat '$ContentIdentifier' "${_SOURCE_DIR}/${_file}")
         _framerate=$(${_PROG_EXIFTOOL} -printFormat '$videoframerate' "${_SOURCE_DIR}/${_file}")
@@ -786,10 +775,13 @@ _convert_vids() {
 
           if [[ "${_USE_HEVC:-"0"}" -eq 1 ]]; then
             # HEVC target 2MPixel, -tag:v hvc1 for Apple, rest same as x264
-
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset slower -movflags use_metadata_tags -crf 32 -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+            # For 20M IMG_9460.MOV
+            # Preset medium: 57s / 12.9 fps @ 1.7M
+            # Preset slower: ?? / <2fps fps @ 2.0M
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset medium -movflags use_metadata_tags -crf 32 -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           else
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx264 -profile:v high -preset slower -crf 26 -movflags +faststart -vf "format=yuv420p,scale='round(iw * min(0.5,sqrt(1280*720/ih/iw)/2))*2':-2:flags=lanczos" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+            # Preset slower: 94s / 7.8 fps @ 4.9M
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx264 -profile:v high -preset slower -crf 26 -movflags +faststart -vf "format=yuv420p,scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2':-2:flags=lanczos" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           fi
         fi
         _debug printf "${_file} Conversion done"
