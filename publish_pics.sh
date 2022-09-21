@@ -337,7 +337,7 @@ _check_prereq() {
 
   # Count numnber of lines, ensure we don't count empty lines
   # https://stackoverflow.com/questions/6314679/in-bash-how-do-i-count-the-number-of-lines-in-a-variable
-  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -rating "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} | grep -c '^' || true)
+  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,png,jpg,heic,xmp} | grep -c '^' || true)
   if [[ "${_NUMMATCHES}" -eq 0 ]]; then
     _die printf "No matches for this directory\\n"
   fi
@@ -572,7 +572,7 @@ _convert_pics() {
   fi
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 
@@ -694,7 +694,7 @@ _convert_vids() {
   # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} || return
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 
@@ -703,7 +703,7 @@ _convert_vids() {
 
     # Skip if outfile exists
     if [[ -f "${_EXPORT_DIR}/${_outfile}" ]]; then
-      _debug printf "%s Skipping previously converted video" "${_imgfileout}"
+      _debug printf "%s Skipping previously converted video" "${_outfile}"
       continue
     fi
 
