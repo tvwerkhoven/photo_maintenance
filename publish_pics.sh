@@ -860,6 +860,7 @@ _tag_pics() {
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext HEIC -P "${_EXPORT_DIR}"
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_iptckeywords[@]}" -ext JPG -P "${_EXPORT_DIR}"
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
+    # Video tagging for Apple/iOS https://exiftool.org/forum/index.php?topic=11329.0
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -Quicktime:Description=${_albumdir_tag} -ext MP4 -P "${_EXPORT_DIR}"
   fi
 
