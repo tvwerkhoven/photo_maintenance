@@ -778,7 +778,7 @@ _convert_vids() {
             # For 20M IMG_9460.MOV
             # Preset medium: 57s / 12.9 fps @ 1.7M
             # Preset slower: ?? / <2fps fps @ 2.0M
-            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset medium -movflags use_metadata_tags -crf 32 -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
+            nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx265 -preset medium -crf 32 -movflags use_metadata_tags -vf "scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2:-2:flags=lanczos" -tag:v hvc1 -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
           else
             # Preset slower: 94s / 7.8 fps @ 4.9M
             nice -n 15 ${_PROG_FFMPEG} -hide_banner -nostdin -nostats -loglevel error -i "${_SOURCE_DIR}/${_file}" -c:v libx264 -profile:v high -preset slower -crf 26 -movflags +faststart -vf "format=yuv420p,scale='round(iw * min(0.5,sqrt(1920*1080/ih/iw)/2))*2':-2:flags=lanczos" -c:a libfdk_aac -vbr 3 -threads 0 -y "${_EXPORT_DIR}/${_outfile}"
@@ -860,6 +860,7 @@ _tag_pics() {
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext HEIC -P "${_EXPORT_DIR}"
     # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_iptckeywords[@]}" -ext JPG -P "${_EXPORT_DIR}"
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -Quicktime:Description=${_albumdir_tag} -ext MP4 -P "${_EXPORT_DIR}"
   fi
 
   shopt -u nocaseglob
