@@ -837,7 +837,6 @@ _tag_pics() {
 
   # All tags in lower case to reduce number of unique keywords
   _albumdir_tag=$(basename "${_EXPORT_DIR}" | tr '[:upper:]' '[:lower:]')
-  # local -a _iptckeywords=("-IPTC:Keywords+=${_albumdir_tag}")
   local -a _xmpkeywords=("-XMP:Subject+=${_albumdir_tag}")
   
   # Skip date (=first space-separated word) in separate keywords, then add the rest if length is more than 2 letters
@@ -848,7 +847,6 @@ _tag_pics() {
   read -ra _albumdir_tag_nodate_arr <<< "${_albumdir_tag_nodate}"
   for _keyword in "${_albumdir_tag_nodate_arr[@]}"; do
       if [ "${#_keyword}"  -gt 2 ]; then
-          # _iptckeywords+=("-IPTC:Keywords+=${_keyword}")
           _xmpkeywords+=("-XMP:Subject+=${_keyword}")
       fi
   done
@@ -857,8 +855,6 @@ _tag_pics() {
   # See https://stackoverflow.com/questions/19154596/exiftool-to-create-osx-visible-xmp-metadata-in-png-images
   # Also see https://www.lightroomqueen.com/community/threads/keywords-with-heic-vs-others.42495/#post-1281827
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext HEIC -P "${_EXPORT_DIR}"
-    # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_iptckeywords[@]}" -ext JPG -P "${_EXPORT_DIR}"
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
     # Video tagging for Apple/iOS https://exiftool.org/forum/index.php?topic=11329.0
     ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -Quicktime:Description=${_albumdir_tag} -ext MP4 -P "${_EXPORT_DIR}"
