@@ -277,6 +277,7 @@ For example to distinguish different photographers
     exiftool '-time:all<$DateTimeOriginal' -wm w -P *aac.mp4
     exiftool '-time:all<$ContentCreateDate' -wm w -P *.mp4
     exiftool '-time:all<$FileModifyDate' -wm w -P *aac.mp4
+    exiftool '-time:all<$Creationdate' -wm w -P IMG*MOV
 
 
     touch -t 201702261838.52 TRIM_20170226_183852-basb.mp4-x264_aac.mp4
@@ -287,6 +288,10 @@ For example to distinguish different photographers
 Forcibly create DateTimeOriginal
 
     exiftool '-DateTimeOriginal<$FileModifyDate' -wm wc -P *jpg
+
+    exiftool '-DateTimeOriginal<$FileModifyDate' -wm wc -P *-*-*-*-*
+
+Don't use `exiftool -tagsfromfile <file> -time:all <file>` because that can create inconsistencies in change history.
 
 ## Match time from adjacent files
 
@@ -399,6 +404,17 @@ find . -type d -iname "19*" | while read dir; do
     ~/Pictures/maintenance/publish_pics.sh --debug ~/stack/pics_lossy12
     cd ..
 done
+
+## Fix EOS 6D DST wrong setting
+
+
+https://exiftool.org/forum/index.php?topic=5507.0
+https://exiftool.org/forum/index.php?topic=13558.0
+https://exiftool.org/forum/index.php?topic=12243.0
+
+exiftool -DaylightSavings=Off -alldates-=1 -wm w -P -ext JPG -if '$model=~/6D Mark/' ./
+exiftool '-IPTC:DateCreated<DateTimeOriginal' '-IPTC:TimeCreated<DateTimeOriginal' -wm w -P -ext JPG -if '$model=~/6D Mark/' ./
+exiftool -IPTCDigest=new -wm w -P -ext JPG -if '$model=~/6D Mark/' ./
 
 ## No DateTimeOriginal
 
