@@ -337,7 +337,7 @@ _check_prereq() {
 
   # Count numnber of lines, ensure we don't count empty lines
   # https://stackoverflow.com/questions/6314679/in-bash-how-do-i-count-the-number-of-lines-in-a-variable
-  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v,png,jpg,heic,xmp} | grep -c '^' || true)
+  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v,png,jpg,jpeg,heic,xmp} | grep -c '^' || true)
   if [[ "${_NUMMATCHES}" -eq 0 ]]; then
     _die printf "No matches for this directory\\n"
   fi
@@ -373,13 +373,13 @@ _prep_input() {
     _debug printf "Preparing timestamps on pictures"
     # We use DateTimeOriginal as leading date for pictures. Add || true in case 
     # exiftool finds no matches (and returns 2)
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg,heic} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic} || true
   fi
 
   # @TODO this code is extremely slow. Can we rely on errors from exiftool when setting filemodifydate and source tag does not exist?
   # If no exif timestamps, check and decide what to do.
   # local _nodatetimeoriginal
-  # _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,avi,mov,mp4} || true)
+  # _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,jpeg,avi,mov,mp4} || true)
   # if [[ -n "${_nodatetimeoriginal}" ]]; then
   #   printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
   #   read
@@ -443,7 +443,7 @@ HEREDOC
   # this breaks the subsecond accuracy as the Z is no longer part of the 
   # timestamp string and thus cannot be replaced by \${ss}Z.
   # @TODO fix or remove subsecond accuracy in gpx.fmt template
-  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/*{png,jpg,heic,mov,mp4} > "${_EXPORT_DIR}/log.gpx" || true
+  ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -if '$GPSLatitude and $DateTimeOriginal' -fileOrder FileModifyDate -p "${_GPX_FMT_PATH}" "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic,mov,mp4} > "${_EXPORT_DIR}/log.gpx" || true
 
   # If we did not find any geotags (i.e. log.gpx is empty), we can skip the 
   # rest here
@@ -566,13 +566,13 @@ _convert_pics() {
   shopt -s nullglob
 
   # Check if we have any files
-  if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg,heic})" ]]; then
+  if [[ -z "$(echo "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic})" ]]; then
     printf "Warning: no pictures found, are you sure source dir is correct?\n"
     return
   fi
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,heic,xmp} | while read -r _file; do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 
@@ -627,7 +627,7 @@ _convert_pics() {
         # Delete Burst UUID tag (if set) because somehow it gets broken while converting causing iOS to not recognize the converted image --> solved in post-process command
         # ${_PROG_EXIFTOOL} -makernotes:burstuuid= -overwrite_original -wm w -P "${_EXPORT_DIR}/${_imgfileout}"
 
-        ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}/${_imgfile}" -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}/${_imgfileout}" || true
+        ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}/${_imgfile}" -all:all -ext JPEG -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}/${_imgfileout}" || true
       fi
     else
       _debug printf "%s Unsupported mime-type: %s" "${_imgfile}" "${_mime}"
@@ -639,8 +639,8 @@ _convert_pics() {
       _touch_file_ref "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
     fi
   done || true)
-  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
-  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4})
 
   # Post-process: copy EXIF tags from source files to destination files. Since the output file can have 
   # a different extension (converting from JPG to HEIC or vice versa), we need two -tagsfromfile commands
@@ -651,17 +651,19 @@ _convert_pics() {
   # @TODO check if source files or target files exist to prevent 'Warning: Error opening file - ./IMG_9371.heic'
   # _debug printf "'Error opening file' warnings might follow, can be ignored"
   # Keep unless (delete only specific groups) -- messes up rotation for jpg --> heic
-  # ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   # Keep unless (copy all tags, delete only specific groups) -- messes up rotation
-  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
-  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
-  ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -all:all -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpeg -all:all -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  # ${_PROG_EXIFTOOL} -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -all:all -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
+  ${_PROG_EXIFTOOL} -q -m -makernotes:all= -ifd1:all= -Orientation=0 -n -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}" || true
   
   # Delete unless (keep only specific groups) -- too aggressive, sometimes also deletes rotation data
-  # exiftool -q -m -all:all= -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
-  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -all:all= -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpeg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.jpg -exif:all --IFD1 --ThumbnailImage -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
+  # exiftool -q -m -tagsfromfile "${_SOURCE_DIR}"/%f.heic -exif:all --IFD1 --ThumbnailImage -ext JPG -ext JPEG -ext HEIC -P -overwrite_original "${_EXPORT_DIR}"
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -812,8 +814,8 @@ _convert_vids() {
       # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
     fi
   done || true)
-  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
-  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,avi,mov,mp4})
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4})
 
   shopt -u nocaseglob
   shopt -u nullglob
@@ -855,9 +857,9 @@ _tag_pics() {
   # See https://stackoverflow.com/questions/19154596/exiftool-to-create-osx-visible-xmp-metadata-in-png-images
   # Also see https://www.lightroomqueen.com/community/threads/keywords-with-heic-vs-others.42495/#post-1281827
   if [[ "${_DRY_RUN:-"0"}" -eq 0 ]]; then
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "${_xmpkeywords[@]}" -ext PNG -ext JPG -ext JPEG -ext JPEG -ext HEIC -P "${_EXPORT_DIR}"
     # Video tagging for Apple/iOS https://exiftool.org/forum/index.php?topic=11329.0
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -Quicktime:Description=${_albumdir_tag} -ext MP4 -P "${_EXPORT_DIR}"
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original -Quicktime:Description="${_albumdir_tag}" -ext MP4 -P "${_EXPORT_DIR}"
   fi
 
   shopt -u nocaseglob
