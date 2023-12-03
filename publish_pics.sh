@@ -337,7 +337,7 @@ _check_prereq() {
 
   # Count numnber of lines, ensure we don't count empty lines
   # https://stackoverflow.com/questions/6314679/in-bash-how-do-i-count-the-number-of-lines-in-a-variable
-  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v,png,jpg,jpeg,heic,xmp} | grep -c '^' || true)
+  _NUMMATCHES=$(${_PROG_EXIFTOOL} -q -q -ignoreMinorErrors -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v,png,jpg,jpeg,heic,xmp} | grep -c '^' || true)
   if [[ "${_NUMMATCHES}" -eq 0 ]]; then
     _die printf "No matches for this directory\\n"
   fi
@@ -367,7 +367,7 @@ _prep_input() {
     # For video, using Quicktime:CreationDate, as this is kept intact when 
     # e.g. trimming a file in QuickTime, whereas Quicktime:CreateDate is set 
     # to the digital creation date.
-    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreationDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v} || true
+    ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" "-CreationDate>FileModifyDate" "-DateTimeOriginal>FileModifyDate" -P -wm w "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v} || true
   fi
   if [[ "${_CONV_PICS:-"0"}" -eq 1 && "${_DRY_RUN:-"0"}" -eq 0 ]]; then
     _debug printf "Preparing timestamps on pictures"
@@ -379,7 +379,7 @@ _prep_input() {
   # @TODO this code is extremely slow. Can we rely on errors from exiftool when setting filemodifydate and source tag does not exist?
   # If no exif timestamps, check and decide what to do.
   # local _nodatetimeoriginal
-  # _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,jpeg,avi,mov,mp4} || true)
+  # _nodatetimeoriginal=$(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '($rating and not ($datetimeoriginal or $CreateDate))' -p '$filename' ${_SOURCE_DIR}/*{png,jpg,jpeg,avi,mov,mp4,mpg,m4v} || true)
   # if [[ -n "${_nodatetimeoriginal}" ]]; then
   #   printf "Warning: %d files have no DateTimeOriginal or CreateDate:\n%s\nok to continue?" "$(echo "${_nodatetimeoriginal}" | wc -l)" "${_nodatetimeoriginal}"
   #   read
@@ -573,6 +573,7 @@ _convert_pics() {
 
   # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg}); do
   (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic,xmp} | while read -r _file; do
+  #(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}"  -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,heic,xmp} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 
@@ -639,8 +640,8 @@ _convert_pics() {
       _touch_file_ref "${_SOURCE_DIR}/${_imgfile}" "${_EXPORT_DIR}/${_imgfileout}"
     fi
   done || true)
-  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
-  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4})
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4,mpg,m4v}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4,mpg,m4v})
 
   # Post-process: copy EXIF tags from source files to destination files. Since the output file can have 
   # a different extension (converting from JPG to HEIC or vice versa), we need two -tagsfromfile commands
@@ -686,17 +687,17 @@ _convert_vids() {
   shopt -s nullglob
 
   # Check if we have any files as quick test to skip this dir
-  if [[ -z "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4})" ]]; then
+  if [[ -z "$(echo "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v})" ]]; then
     printf "Warning: no videos found, are you sure source dir is correct?\n"
     return
   fi
 
   # Check if any of the existing files have rating tag set, else return from this function
   # @TODO can we speed this up or merge this with the below command? We're now running command twice
-  # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4} || return
+  # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v} || return
 
-  # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4}); do
-  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,m4v} | while read -r _file; do
+  # for _file in $(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v}); do
+  (${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating==5' -printFormat '$filename' "${_SOURCE_DIR}"/*{avi,mov,mp4,mpg,m4v} | while read -r _file; do
     _debug printf "${_file}"
     _numfile=$(( ${_numfile} + 1 ))
 
@@ -814,8 +815,8 @@ _convert_vids() {
       # ${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -overwrite_original "-FileCreateDate<DateTimeOriginal" -P "${_EXPORT_DIR}/${_file}-x264_aac.mp4"
     fi
   done || true)
-  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4}) are split in parallel, causing the while read loop to choke? 
-  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4})
+  # This results in ambiguous redirect. Somehow the multiple globs (*{png,jpg,jpeg,avi,mov,mp4,mpg,m4v}) are split in parallel, causing the while read loop to choke? 
+  # done < <(${_PROG_EXIFTOOL} "${_PROG_EXIFTOOL_OPTS[@]}" -if '$rating' -printFormat '$filename' "${_SOURCE_DIR}"/*{png,jpg,jpeg,avi,mov,mp4,mpg,m4v})
 
   shopt -u nocaseglob
   shopt -u nullglob
